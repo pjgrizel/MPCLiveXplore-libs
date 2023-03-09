@@ -165,7 +165,7 @@ static int product_compatible_file_handler = -1 ;
 // Power supply file handlers
 static int pws_online_file_handler = -1 ;
 static int pws_voltage_file_handler = -1 ;
-static FILE *fpws_voltage_file_handler;
+// static FILE *fpws_voltage_file_handler;
 
 static int pws_present_file_handler = -1 ;
 static int pws_status_file_handler = -1 ;
@@ -219,7 +219,7 @@ int GetCardFromShortName(const char *pattern) {
 // Will return 0 if found,.  if trueName or card are NULL, they are ignored.
 int GetSeqClientPortName(int clientId, int portId, char cli_name[], char port_name[] ) {
 
-  int c= -1;
+  // int c= -1;
 
 	snd_seq_t *seq;
 	if (snd_seq_open(&seq, "default", SND_SEQ_OPEN_DUPLEX, 0) < 0) {
@@ -581,7 +581,7 @@ void dump_event(const snd_seq_event_t *ev)
 		break;
 	case SND_SEQ_EVENT_SYSEX:
 		{
-			unsigned int i;
+			// unsigned int i;
 			tklog_trace("System exclusive         \n");
       ShowBufferHexDump((uint8_t*)ev->data.ext.ptr, ev->data.ext.len,16 );
 			tklog_trace("\n");

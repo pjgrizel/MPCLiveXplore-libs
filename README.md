@@ -8,6 +8,20 @@
 Special libraries and code for MPC and Force devices
 NB : You need SSH images uopdate to use these libraries.
 
+
+### Docker to cross-build
+
+```
+docker build --rm -t pjgrizel/mpc-crosstool .
+# Grab a loooong coffee
+docker run -v `/bin/pwd`/src:/src/ -ti --rm pjgrizel/mpc-crosstool /bin/bash
+
+cd /src/
+export CC=/root/x-tools/armv7-unknown-linux-gnueabihf/bin/armv7-unknown-linux-gnueabihf-cc
+LIBRARY=tkgl_mpcmapper ; $CC -Wall -L /root/x-tools/armv7-unknown-linux-gnueabihf/lib ./$LIBRARY.c -o $LIBRARY.so -I /root/alsa-lib/include/ -shared -fPIC -ldl -lasound && scp $LIBRARY.so root@192.168.1.85:/media/Akai/cross-pj/
+
+```
+
 ### TKGL_MIDIMAPPER
 
 This LD_PRELOAD library allows you to reconfigure the keys inaccessible in midi learn like PLAY START, STOP on the MPC, or LAUNCH, MATRIX, MIXER on the Force for example. A plugin system allows to load the configuration designed for the midi device you are using. 

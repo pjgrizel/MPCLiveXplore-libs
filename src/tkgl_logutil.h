@@ -1,3 +1,5 @@
+
+
 enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
 #define tklog_trace(...) tklog(LOG_TRACE,  __VA_ARGS__)

@@ -53,6 +53,23 @@ __ __| |           |  /_) |     ___|             |           |\n\
 
 #define PRODUCT_CODE_PATH "/sys/firmware/devicetree/base/inmusic,product-code"
 
+#define PRODUCT_COMPATIBLE_STR "inmusic,%sinmusic,az01rockchip,rk3288"
+#define PRODUCT_COMPATIBLE_PATH "/sys/firmware/devicetree/base/compatible"
+
+// Power supply faking
+#define POWER_SUPPLY_ONLINE_PATH "/sys/class/power_supply/az01-ac-power/online"
+#define POWER_SUPPLY_VOLTAGE_NOW_PATH "/sys/class/power_supply/az01-ac-power/voltage_now"
+#define POWER_SUPPLY_PRESENT_PATH "/sys/class/power_supply/sbs-3-000b/present"
+#define POWER_SUPPLY_STATUS_PATH "/sys/class/power_supply/sbs-3-000b/status"
+#define POWER_SUPPLY_CAPACITY_PATH "/sys/class/power_supply/sbs-3-000b/capacity"
+
+#define POWER_SUPPLY_ONLINE "1"
+#define POWER_SUPPLY_VOLTAGE_NOW "18608000"
+#define POWER_SUPPLY_PRESENT "1"
+#define POWER_SUPPLY_STATUS "Full"
+#define POWER_SUPPLY_CAPACITY "100"
+
+
 // Send and destination Ids for midi messages
 enum FromPortsIds  {  FROM_MPC_PRIVATE, FROM_MPC_PUBLIC,FROM_CTRL_MPC, FROM_MPC_EXTCTRL, FROM_CTRL_EXT };
 enum ToPortsIds    {  TO_CTRL_MPC_PRIVATE, TO_CTRL_MPC_PUBLIC, TO_MPC_PRIVATE, TO_MPC_EXTCTRL, TO_CTRL_EXT };
