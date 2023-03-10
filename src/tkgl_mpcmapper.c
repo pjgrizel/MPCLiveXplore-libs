@@ -211,6 +211,9 @@ static typeof(&open64) orig_open64;
 //static typeof(&open) orig_open;
 static typeof(&close) orig_close;
 
+// Our timer to update battery status every 60 seconds
+static time_t lastLightBulbUpdate;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Match string against a regular expression
 ///////////////////////////////////////////////////////////////////////////////
@@ -727,6 +730,65 @@ void ShowHelp(void) {
   exit(0);
 }
 
+
+// Lightbulb, anyone?
+static void displayBatteryStatus() {
+    // We start by opening the capacity file
+    int fd;
+    int battery_;
+    char buffer[6];
+    char intBuffer[4];
+    ssize_t bytesRead;
+    int scale;
+    fd = orig_open64(POWER_SUPPLY_CAPACITY_PATH, O_RDONLY);
+
+    // Read battery_ value from fp
+    // Convert the string to an integer
+    bytesRead = read(fd, buffer, 6);
+    orig_close(fd);
+    memcpy(intBuffer, buffer, 3);
+    intBuffer[bytesRead] = '\0';
+    battery_ = atoi(intBuffer);
+    scale = battery_ * 8 / 100;
+    uint8_t light_1[] = { 0xB0, 0x5A, 0x00 } ;
+    uint8_t light_2[] = { 0xB0, 0x5B, 0x00 } ;
+    uint8_t light_3[] = { 0xB0, 0x5C, 0x00 } ;
+    uint8_t light_4[] = { 0xB0, 0x5D, 0x00 } ;
+    if (scale > 0) {
+        light_1[2] = 0x01;
+    }
+    if (scale > 2) {
+        light_2[2] = 0x01;
+    }
+    if (scale > 4) {
+        light_3[2] = 0x01;
+    }
+    if (scale > 6) {
+        light_4[2] = 0x01;
+    }
+    if (scale == 2) {
+        light_1[2] = 0x02;
+    }
+    if (scale == 4) {
+        light_2[2] = 0x02;
+    }
+    if (scale == 6) {
+        light_3[2] = 0x02;
+    }
+    if (scale == 8) {
+        light_4[2] = 0x02;
+    }
+
+    tklog_debug("Battery: %d%% (%d/8)\n", battery_, scale);
+
+    // Let's write it to the private ports
+    orig_snd_rawmidi_write(rawvirt_outpriv,light_1,sizeof(light_1));
+    orig_snd_rawmidi_write(rawvirt_outpriv,light_2,sizeof(light_2));
+    orig_snd_rawmidi_write(rawvirt_outpriv,light_3,sizeof(light_3));
+    orig_snd_rawmidi_write(rawvirt_outpriv,light_4,sizeof(light_4));
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Setup tkgl anyctrl
 ///////////////////////////////////////////////////////////////////////////////
@@ -853,7 +915,6 @@ static void tkgl_init()
 	}
 
   // Create a user virtual port if asked on the command line
-
   if ( user_virtual_portname != NULL) {
 
     char temp_portname[64];
@@ -864,8 +925,10 @@ static void tkgl_init()
     }
     tklog_info("Virtual user port %s succesfully created.\n",user_virtual_portname);
     //snd_rawmidi_open(&read_handle, &write_handle, "virtual", 0);
-
   }
+
+  // Show battery status
+  displayBatteryStatus();
 
 	fflush(stdout);
 }
@@ -1531,6 +1594,8 @@ static size_t Mpc_MapReadFromMpc(void *midiBuffer, size_t maxSize,size_t size) {
     return size;
 }
 
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // MIDI WRITE - APP ON MPC MAPPING TO MPC
 ///////////////////////////////////////////////////////////////////////////////
@@ -2109,6 +2174,12 @@ ssize_t snd_rawmidi_write(snd_rawmidi_t * 	rawmidi,const void * 	buffer,size_t 	
       }
     }
   }
+
+  // Every 60 seconds, we display the battery status
+    if ( time(NULL) - lastLightBulbUpdate > 60 ) {
+        lastLightBulbUpdate = time(NULL);
+        displayBatteryStatus();
+    }
 
 
   if ( rawMidiDumpPostFlag ) RawMidiDump(rawmidi, 'o','w' , buffer, size);
