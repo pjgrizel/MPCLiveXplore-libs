@@ -626,17 +626,21 @@ void SetPadColorRGB(const uint8_t MPC_Id, const uint8_t padNumber, const uint32_
 ///////////////////////////////////////////////////////////////////////////////
 int GetCardFromShortName(const char *pattern) {
    int card = -1;
+   int found_card = -1;
    char* shortname = NULL;
 
    if ( snd_card_next(&card) < 0) return -1;
    while (card >= 0) {
-   	  if ( snd_card_get_name(card, &shortname) == 0  ) {
-       if (match(shortname,pattern) ) return card;
-     }
-   	 if ( snd_card_next(&card) < 0) break;
+         if ( snd_card_get_name(card, &shortname) == 0 ) {
+            tklog_debug("[getcardshortname] Card %d : %s <> %s\n", card, shortname, pattern);
+            // Check if both strings are equal
+            if ( strcmp(shortname,pattern) == 0 ) {
+              found_card = card;              
+           };
+         }
+         if ( snd_card_next(&card) < 0) break;
    }
-
-   return -1;
+   return found_card;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
