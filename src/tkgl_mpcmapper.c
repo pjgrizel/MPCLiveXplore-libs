@@ -524,16 +524,22 @@ void SetPadColorFromColorInt(const uint8_t mpcId, const uint8_t padNumber, const
 ///////////////////////////////////////////////////////////////////////////////
 int GetCardFromShortName(const char *pattern) {
    int card = -1;
+   int found_card = -1;
    char* shortname = NULL;
 
    if ( snd_card_next(&card) < 0) return -1;
    while (card >= 0) {
-         if ( snd_card_get_name(card, &shortname) == 0 && match(shortname,pattern) ) return card;
+         if ( snd_card_get_name(card, &shortname) == 0 ) {
+            tklog_debug("[getcardshortname] Card %d : %s <> %s\n", card, shortname, pattern);
+            // Check if both strings are equal
+            if ( strcmp(shortname,pattern) == 0 ) {
+              found_card = card;              
+           };
+         }
          if ( snd_card_next(&card) < 0) break;
    }
-   return -1;
+   return found_card;
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Get an ALSA sequencer client , port and alsa card  from a regexp pattern
@@ -562,14 +568,15 @@ int GetSeqClientFromPortName(const char * name, int *card, int *clientId, int *p
 		snd_seq_port_info_set_client(pinfo, snd_seq_client_info_get_client(cinfo));
 		snd_seq_port_info_set_port(pinfo, -1);
     while (snd_seq_query_next_port(seq, pinfo) >= 0) {
-			sprintf(port_name,"%s %s",snd_seq_client_info_get_name(cinfo),snd_seq_port_info_get_name(pinfo));
+      sprintf(port_name,"%s %s",snd_seq_client_info_get_name(cinfo),snd_seq_port_info_get_name(pinfo));
+			tklog_debug("Scanning port %s\n", port_name);
       if (match(port_name,name) ) {
         c = GetCardFromShortName(snd_seq_client_info_get_name(cinfo));
         if ( c < 0 ) return -1;
         *card = c;
         *clientId = snd_seq_port_info_get_client(pinfo);
         *portId = snd_seq_port_info_get_port(pinfo);
-        //tklog_debug("(hw:%d) Client %d:%d - %s%s\n",c, snd_seq_port_info_get_client(pinfo),snd_seq_port_info_get_port(pinfo),port_name );
+        tklog_debug("(hw:%d) Client %d:%d - %s\n",c, snd_seq_port_info_get_client(pinfo),snd_seq_port_info_get_port(pinfo),port_name );
         return 0;
 			}
 		}
