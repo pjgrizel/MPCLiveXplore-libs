@@ -528,14 +528,12 @@ int GetCardFromShortName(const char *pattern) {
 
    if ( snd_card_next(&card) < 0) return -1;
    while (card >= 0) {
-   	  if ( snd_card_get_name(card, &shortname) == 0  ) {
-       if (match(shortname,pattern) ) return card;
-     }
-   	 if ( snd_card_next(&card) < 0) break;
+         if ( snd_card_get_name(card, &shortname) == 0 && match(shortname,pattern) ) return card;
+         if ( snd_card_next(&card) < 0) break;
    }
-
    return -1;
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Get an ALSA sequencer client , port and alsa card  from a regexp pattern
