@@ -109,8 +109,6 @@ __ __| |           |  /_) |     ___|             |           |\n\
 #define MPCPADS_TABLE_IDX_OFFSET 0X24
 #define FORCEPADS_TABLE_IDX_OFFSET 0X36
 
-#define MAPPING_TABLE_SIZE 256
-
 // INI FILE Constant
 #define INI_FILE_KEY_MAX_LEN 64
 #define INI_FILE_LINE_MAX_LEN 256
