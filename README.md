@@ -8,9 +8,31 @@
 Special libraries and code for MPC and Force devices
 NB : You need SSH images uopdate to use these libraries.
 
+
+### Docker to cross-build
+
+```
+docker build --rm -t pjgrizel/mpc-crosstool .
+# Grab a loooong coffee
+docker run -v `/bin/pwd`/src:/src/ -ti --rm pjgrizel/mpc-crosstool /bin/bash
+
+cd /src/
+export CC=/root/x-tools/armv7-unknown-linux-gnueabihf/bin/armv7-unknown-linux-gnueabihf-cc
+LIBRARY=tkgl_mpcmapper ; $CC -Wall -L /root/x-tools/armv7-unknown-linux-gnueabihf/lib ./$LIBRARY.c -o $LIBRARY.so -I /root/alsa-lib/include/ -shared -fPIC -ldl -lasound && scp $LIBRARY.so root@192.168.1.85:/media/Akai/cross-pj/
+
+```
+
+### TKGL_MIDIMAPPER
+
+This LD_PRELOAD library allows you to reconfigure the keys inaccessible in midi learn like PLAY START, STOP on the MPC, or LAUNCH, MATRIX, MIXER on the Force for example. A plugin system allows to load the configuration designed for the midi device you are using. 
+
+The language used to create plugins is C, for performance reasons. So you need to have some programming knowledge, and install an ARM C compiler (this will be the subject of a later post on the wiki). For example, I created a plugin for my A800 master keyboard to launch scenes 1 to 8 from pads 1 to 8, and mapped the play, stop, rec keys to the PLAY, STOP ALL, REC keys of my Force. It's very nice to be able to control the workflow from my master keyboard.
+
+NB: you need ssh access to your MPC.
+
 ### TKGL_ANYCTRL  TKGL_ANYCTRL_LT
 
-This "low-level" library allows you to set up any controller as a control surface to drive the MPC standalone application. 
+These 2 "low-level" libraries allows you to set up any controller as a control surface to drive the MPC standalone application. 
 
 NB: you need ssh access to your MPC.
 
@@ -31,8 +53,8 @@ By a simple midi message mapping in your own controller, it is possible now to s
 	IO  hw:2,0,2  Midi Out
 	IO  hw:2,0,3  Midi Out
 
-The "PRIVATE" and "PUBLIC"  ports used by the MPC application to send or capture messages from the MPC controller are replaced by a 3 rawmidi virtual seq ports (usually #134-135-136).   These virtual ports are reconnected to the physical port of the controller with an alsa connection, similar to the "aconnect" command line ALSA utility, before the sending of SYSEX controller identification sequences.  These virtual ports can be then used to connect any other controller in addition to the standard hardware.  
-Note that running status are inhibited.
+The "PRIVATE" and "PUBLIC"  ports used by the MPC application to send or capture messages from the MPC controller are replaced by a 3 rawmidi virtual seq ports (usually #134-135-136).   These virtual ports are reconnected to the physical ports of the controller with an alsa connection, similar to the "aconnect" command line ALSA utility, before the sending of SYSEX controller identification sequences.  These virtual ports can be then used to connect any other controller in addition to the standard hardware.  
+Note that,as a side effect,  midi running status are inhibited.
 
 So , now, you can add "buttons" allowing direct access to the different screens of the MPC application, as the MPC X or ONE do.  
 You can even consider making a dedicated DIY usb controller (check my other Kikpad project) to add buttons or qlinks (like SOLO or MUTE buttons on the MPC Live for example).
@@ -41,8 +63,10 @@ Note : MPC users can use the ["global mapping"](https://github.com/TheKikGen/MPC
 
 #### Quick setup
 
-Copy the tkgl_anyctrl.so library on a usb stick of a smartcard.
-The "ANYCTRL_NAME" environment varaible can contains a string / substring matching the name of the midi controller you want to use to simulate a MPC controller.   
+Copy the tkgl_anyctrl.so library on a usb stick of a smartcard.  
+tkgl_anyctrl_lt.so is exactly the same, but will map only private port. It is enough for simple button mapping.  
+
+The "ANYCTRL_NAME" environment varaible can contains a regex pattern matching the name of the midi controller + port  you want to use to simulate a MPC controller. You can use a "aconnect -l" command to get your controller exact ports names.  
 To avoid crashes due to potential infinite midi loops, the first midi port of your controller will be disabled within the MPC application, so you will not see it anymore in midi devices setting.
 
 If that variable is not defined, the application will start as usual, but will still use virtual ports in place of hardware ports.
@@ -144,6 +168,26 @@ hw:1,0,1 --> MPC      = F0 47 7F 3B 41 00 13 00 00 00 00 00 00 00 00 00  | .G.;A
                         00 00 00 00 00 00 00 00 00 00 F7                 | ...........
 
 ```
+
+## TKGL_MPCMAPPER
+
+This "low-level" library allows you to hijack the MPC/Force application to add your own midi mapping to input and output midi messages. 
+This library is used for the new version of IamForce, as mpcmapper allows to hack MPCs or Force 
+
+You can use the following options on the LD_PRELOAD command line :
+--tgkl_help               : Show this help<br>
+--tkgl_ctrlname=<name>    : Use external controller containing <name><br>
+--tkgl_iamX               : Emulate MPC X on your current hardware<br>
+--tkgl_iamLive            : Emulate MPC Live on your current hardware<br>
+--tkgl_iamForce           : Emulate Force on your current hardware<br>
+--tkgl_iamOne             : Emulate MPC One on your current hardware<br>
+--tkgl_iamLive2           : Emulate MPC Live Mk II  on your current hardware<br>
+--tkgl_virtualport=<name> : Create end user virtual port that will be visible within the MPC application<br>
+--tkgl_mididump           : Dump original raw midi flow (similar to TKGL_CTRLDUMP) <br>
+--tkgl_mididumpPost       : Dump raw midi flow after transformation used to dump midi message after transformation<br>
+--tkgl_configfile=<name>  : Use configuration file <name> notably to map current harware buttons to specific emulated device funtion<br>
+
+
 ## TKGL_IAMFORCE
 
 A first derivative POC based on the anyctrl library allowed hardware identity spoofing.
