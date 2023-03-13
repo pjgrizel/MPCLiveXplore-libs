@@ -33,6 +33,8 @@ your own midi mapping to input and output midi messages.
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 
+#ifndef TKGL_MPCMAPPER_H
+#define TKGL_MPCMAPPER_H
 
 #define VERSION "BETA2"
 
@@ -71,36 +73,34 @@ __ __| |           |  /_) |     ___|             |           |\n\
 #define POWER_SUPPLY_CAPACITY "100"
 
 // Colors R G B (nb . max r g b value is 7f. The bit 8 is always set )
-#define COLOR_WHITE   0x7F7F7F
-#define COLOR_BLACK   0x000000
-#define COLOR_RED     0x7F0000
-#define COLOR_BLUE    0x00007F
-#define COLOR_GREEN   0x007F00
-#define COLOR_YELLOW  0x007F7F
+#define COLOR_WHITE 0x7F7F7F
+#define COLOR_BLACK 0x000000
+#define COLOR_RED 0x7F0000
+#define COLOR_BLUE 0x00007F
+#define COLOR_GREEN 0x007F00
+#define COLOR_YELLOW 0x007F7F
 #define COLOR_MAGENTA 0x7F007F
 
 // Mute pads mod button value
-#define FORCE_ASSIGN_A   123
-#define FORCE_ASSIGN_B   124
-#define FORCE_MUTE       91
-#define FORCE_SOLO       92
-#define FORCE_REC_ARM    93
-#define FORCE_CLIP_STOP  94
+#define FORCE_ASSIGN_A 123
+#define FORCE_ASSIGN_B 124
+#define FORCE_MUTE 91
+#define FORCE_SOLO 92
+#define FORCE_REC_ARM 93
+#define FORCE_CLIP_STOP 94
 
-#define FORCE_LEFT  0x72
+#define FORCE_LEFT 0x72
 #define FORCE_RIGHT 0X73
-#define FORCE_UP    0X70
-#define FORCE_DOWN  0x71
+#define FORCE_UP 0X70
+#define FORCE_DOWN 0x71
 
 #define FORCE_MATRIX 3
-
 
 // MPC Bank buttons
 #define BANK_A 0x23
 #define BANK_B 0x24
 #define BANK_C 0x25
 #define BANK_D 0X26
-
 
 // The shift value is hard coded here because it is equivalent whatever the platform is
 #define SHIFT_KEY_VALUE 49
@@ -113,43 +113,60 @@ __ __| |           |  /_) |     ___|             |           |\n\
 #define INI_FILE_KEY_MAX_LEN 64
 #define INI_FILE_LINE_MAX_LEN 256
 
-
-// Pads Color cache captured from sysex events
-typedef struct {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-} ForceMPCPadColor_t;
-
-
 // Device info block typedef
-typedef struct {
-  char    * productCode;
-  char    * productCompatible;
-  bool      fakePowerSupply;
-  uint8_t   sysexId;
-  char    * productString;
-  char    * productStringShort;
-  uint8_t   qlinkKnobsCount;
-  uint8_t   sysexIdReply[7];
+typedef struct
+{
+  char *productCode;
+  char *productCompatible;
+  bool fakePowerSupply;
+  uint8_t sysexId;
+  char *productString;
+  char *productStringShort;
+  uint8_t qlinkKnobsCount;
+  uint8_t sysexIdReply[7];
 } DeviceInfo_t;
 
 // Internal MPC product sysex id  ( a struct may be better....)
-enum MPCIds  {  MPC_X,   MPC_LIVE,   MPC_FORCE, MPC_ONE,   MPC_LIVE_MK2, _END_MPCID };
+enum MPCIds
+{
+  MPC_X,
+  MPC_LIVE,
+  MPC_FORCE,
+  MPC_ONE,
+  MPC_LIVE_MK2,
+  _END_MPCID
+};
 
 // Declare in the same order that enums above
 const static DeviceInfo_t DeviceInfoBloc[] = {
-  { .productCode = "ACV5", .productCompatible = "acv5", .fakePowerSupply = false, .sysexId = 0x3a, .productString = "MPC X",      .productStringShort = "X",     .qlinkKnobsCount = 16, .sysexIdReply = {0x3A,0x00,0x19,0x00,0x01,0x01,0x01} },
-  { .productCode = "ACV8", .productCompatible = "acv8", .fakePowerSupply = true,  .sysexId = 0x3b, .productString = "MPC Live",   .productStringShort = "LIVE",  .qlinkKnobsCount = 4,  .sysexIdReply = {0x3B,0x00,0x19,0x00,0x01,0x01,0x01} },
-  { .productCode = "ADA2", .productCompatible = "ada2", .fakePowerSupply = false, .sysexId = 0x40, .productString = "Force",      .productStringShort = "FORCE", .qlinkKnobsCount = 8,  .sysexIdReply = {0x40,0x00,0x19,0x00,0x00,0x04,0x03} },
-  { .productCode = "ACVA", .productCompatible = "acva", .fakePowerSupply = false, .sysexId = 0x46, .productString = "MPC One",    .productStringShort = "ONE",   .qlinkKnobsCount = 4,  .sysexIdReply = {0x46,0x00,0x19,0x00,0x01,0x01,0x01} },
-  { .productCode = "ACVB", .productCompatible = "acvb", .fakePowerSupply = true,  .sysexId = 0x47, .productString = "MPC Live 2", .productStringShort = "LIVE2", .qlinkKnobsCount = 4,  .sysexIdReply = {0x47,0x00,0x19,0x00,0x01,0x01,0x01} },
+    {.productCode = "ACV5", .productCompatible = "acv5", .fakePowerSupply = false, .sysexId = 0x3a, .productString = "MPC X", .productStringShort = "X", .qlinkKnobsCount = 16, .sysexIdReply = {0x3A, 0x00, 0x19, 0x00, 0x01, 0x01, 0x01}},
+    {.productCode = "ACV8", .productCompatible = "acv8", .fakePowerSupply = true, .sysexId = 0x3b, .productString = "MPC Live", .productStringShort = "LIVE", .qlinkKnobsCount = 4, .sysexIdReply = {0x3B, 0x00, 0x19, 0x00, 0x01, 0x01, 0x01}},
+    {.productCode = "ADA2", .productCompatible = "ada2", .fakePowerSupply = false, .sysexId = 0x40, .productString = "Force", .productStringShort = "FORCE", .qlinkKnobsCount = 8, .sysexIdReply = {0x40, 0x00, 0x19, 0x00, 0x00, 0x04, 0x03}},
+    {.productCode = "ACVA", .productCompatible = "acva", .fakePowerSupply = false, .sysexId = 0x46, .productString = "MPC One", .productStringShort = "ONE", .qlinkKnobsCount = 4, .sysexIdReply = {0x46, 0x00, 0x19, 0x00, 0x01, 0x01, 0x01}},
+    {.productCode = "ACVB", .productCompatible = "acvb", .fakePowerSupply = true, .sysexId = 0x47, .productString = "MPC Live 2", .productStringShort = "LIVE2", .qlinkKnobsCount = 4, .sysexIdReply = {0x47, 0x00, 0x19, 0x00, 0x01, 0x01, 0x01}},
 };
 
 // MPC hardware pads : a totally anarchic numbering!
 // Force is orered from 0x36. Top left
-enum MPCPads { MPC_PAD1, MPC_PAD2, MPC_PAD3, MPC_PAD4, MPC_PAD5,MPC_PAD6,MPC_PAD7, MPC_PAD8,
-              MPC_PAD9, MPC_PAD10, MPC_PAD11, MPC_PAD12, MPC_PAD13, MPC_PAD14, MPC_PAD15, MPC_PAD16 };
+enum MPCPads
+{
+  MPC_PAD1,
+  MPC_PAD2,
+  MPC_PAD3,
+  MPC_PAD4,
+  MPC_PAD5,
+  MPC_PAD6,
+  MPC_PAD7,
+  MPC_PAD8,
+  MPC_PAD9,
+  MPC_PAD10,
+  MPC_PAD11,
+  MPC_PAD12,
+  MPC_PAD13,
+  MPC_PAD14,
+  MPC_PAD15,
+  MPC_PAD16
+};
 
 // MPC ---------------------     FORCE------------------
 // Press = 99 [pad#] [00-7F]     idem
@@ -168,30 +185,44 @@ enum MPCPads { MPC_PAD1, MPC_PAD2, MPC_PAD3, MPC_PAD4, MPC_PAD5,MPC_PAD6,MPC_PAD
 // (5) 28 (6) 26 (7) 2E (8) 2C
 // (1) 25 (2) 24 (3) 2A (4) 52
 
-static const uint8_t MPCPadsTable[]
-= { MPC_PAD2, MPC_PAD1, MPC_PAD6,  0xff,   MPC_PAD5,    0xff,  MPC_PAD3, MPC_PAD12,
-//    0x24,       0x25,     0x26,    (0x27),   0x28,   (0x29),    0x2A,     0x2B,
-    MPC_PAD8, MPC_PAD11, MPC_PAD7, MPC_PAD10, MPC_PAD9, MPC_PAD13, 0xff,  MPC_PAD15,
-//    0x2C,       0x2D,     0x2E,     0x2F,     0x30,      0x31,   (0x32)   0x33,
-  0xff,   MPC_PAD16, 0xff, MPC_PAD14,
-// (0x34), 0x35,    (0x36)   0x37,
-0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
-0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
-0xff,0xff,0xff,0xff,0xff,0xff,
-// 0x38 - 0x51
-MPC_PAD4 };
+static const uint8_t MPCPadsTable[] = {MPC_PAD2, MPC_PAD1, MPC_PAD6, 0xff, MPC_PAD5, 0xff, MPC_PAD3, MPC_PAD12,
+                                       //    0x24,       0x25,     0x26,    (0x27),   0x28,   (0x29),    0x2A,     0x2B,
+                                       MPC_PAD8, MPC_PAD11, MPC_PAD7, MPC_PAD10, MPC_PAD9, MPC_PAD13, 0xff, MPC_PAD15,
+                                       //    0x2C,       0x2D,     0x2E,     0x2F,     0x30,      0x31,   (0x32)   0x33,
+                                       0xff, MPC_PAD16, 0xff, MPC_PAD14,
+                                       // (0x34), 0x35,    (0x36)   0x37,
+                                       0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                       0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                       0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                       // 0x38 - 0x51
+                                       MPC_PAD4};
 // 0x52
 
-static const uint8_t MPCPadsTable2[]
-= {
-  0x25,0x24,0x2A,0x52,
-  0x28,0x26,0x2E,0x2C,
-  0x30,0x2F,0x2D,0x2B,
-  0x31,0x37,0x33,0x35
-};
-
+static const uint8_t MPCPadsTable2[] = {
+    0x25, 0x24, 0x2A, 0x52,
+    0x28, 0x26, 0x2E, 0x2C,
+    0x30, 0x2F, 0x2D, 0x2B,
+    0x31, 0x37, 0x33, 0x35};
 
 // Sysex patterns.
-static const uint8_t AkaiSysex[]                  = {0xF0,0x47, 0x7F};
-static const uint8_t MPCSysexPadColorFn[]                = {0x65,0x00,0x04};
-static const uint8_t IdentityReplySysexHeader[]   = {0xF0,0x7E,0x00,0x06,0x02,0x47};
+static const uint8_t AkaiSysex[] = {0xF0, 0x47, 0x7F};
+static const uint8_t MPCSysexPadColorFn[] = {0x65, 0x00, 0x04};
+static const uint8_t IdentityReplySysexHeader[] = {0xF0, 0x7E, 0x00, 0x06, 0x02, 0x47};
+
+// The ports we're gonna use
+extern snd_rawmidi_t *rawvirt_inpriv;
+extern snd_rawmidi_t *rawvirt_outpriv;
+extern snd_rawmidi_t *rawvirt_outpub;
+
+// Our MPC product id (index in the table)
+extern int MPCOriginalId;
+// The one used
+extern int MPCId;
+// and the spoofed one,
+extern int MPCSpoofedID;
+
+// Faked functions
+extern typeof(&snd_rawmidi_read) orig_snd_rawmidi_read;
+extern typeof(&snd_rawmidi_write) orig_snd_rawmidi_write;
+
+#endif

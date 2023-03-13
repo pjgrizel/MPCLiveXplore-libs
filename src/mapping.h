@@ -1,3 +1,5 @@
+#ifndef MPC_MAPPING_H
+#define MPC_MAPPING_H
 #define MAPPING_TABLE_SIZE 256
 
 extern int map_ButtonsLeds[MAPPING_TABLE_SIZE];
@@ -5,27 +7,37 @@ extern int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
 extern int map_Ctrl[MAPPING_TABLE_SIZE];
 extern int map_Ctrl_Inv[MAPPING_TABLE_SIZE]; // Inverted table
 
-void LoadMappingFromConfFile(const char *confFileName);
+void LoadMapping();
+size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size);
+void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
+
+// Pads Color cache captured from sysex events
+typedef struct
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} ForceMPCPadColor_t;
 
 // Basic assignments
-#define FORCE_BT_ENCODER 0x6F
-#define FORCE_BT_NAVIGATE 0
-#define FORCE_BT_KNOBS 1
-#define FORCE_BT_MENU 2
-#define FORCE_BT_MATRIX 3
-#define FORCE_BT_NOTE 4
+#define FORCE_BT_ENCODER 0x6F       // ok
+#define FORCE_BT_NAVIGATE 0         // ok
+#define FORCE_BT_KNOBS 1            // ok
+#define FORCE_BT_MENU 2             // ok
+#define FORCE_BT_MATRIX 3           // ok
+#define FORCE_BT_NOTE 4             // ok
 #define FORCE_BT_MASTER 5
-#define FORCE_BT_CLIP 9
-#define FORCE_BT_MIXER 11
-#define FORCE_BT_LOAD 35
-#define FORCE_BT_SAVE 36
-#define FORCE_BT_EDIT 37
-#define FORCE_BT_DELETE 38
-#define FORCE_BT_SHIFT 0x31
-#define FORCE_BT_SELECT 52
-#define FORCE_BT_TAP_TEMPO 53
-#define FORCE_BT_PLUS 54
-#define FORCE_BT_MINUS 55
+#define FORCE_BT_CLIP 9             // ok
+#define FORCE_BT_MIXER 11           // ok
+#define FORCE_BT_LOAD 35            // ok
+#define FORCE_BT_SAVE 36            // ok
+#define FORCE_BT_EDIT 37            // ok
+#define FORCE_BT_DELETE 38          // ok
+#define FORCE_BT_SHIFT 0x31         // ok
+#define FORCE_BT_SELECT 52          // ok
+#define FORCE_BT_TAP_TEMPO 53       // ok
+#define FORCE_BT_PLUS 54            // ok
+#define FORCE_BT_MINUS 55           // ok
 #define FORCE_BT_LAUNCH_1 56
 #define FORCE_BT_LAUNCH_2 57
 #define FORCE_BT_LAUNCH_3 58
@@ -34,10 +46,10 @@ void LoadMappingFromConfFile(const char *confFileName);
 #define FORCE_BT_LAUNCH_6 61
 #define FORCE_BT_LAUNCH_7 62
 #define FORCE_BT_LAUNCH_8 63
-#define FORCE_BT_UNDO 67
-#define FORCE_BT_REC 73
-#define FORCE_BT_STOP 81
-#define FORCE_BT_PLAY 82
+#define FORCE_BT_UNDO 67            // ok
+#define FORCE_BT_REC 73             // ok
+#define FORCE_BT_STOP 81            // ok
+#define FORCE_BT_PLAY 82            // ok
 #define FORCE_BT_QLINK1_TOUCH 83
 #define FORCE_BT_QLINK2_TOUCH 84
 #define FORCE_BT_QLINK3_TOUCH 85
@@ -51,10 +63,10 @@ void LoadMappingFromConfFile(const char *confFileName);
 #define FORCE_BT_DOWN 113
 #define FORCE_BT_LEFT 114
 #define FORCE_BT_RIGHT 115
-#define FORCE_BT_LAUNCH 116
-#define FORCE_BT_STEP_SEQ 117
+#define FORCE_BT_LAUNCH 116         // ok
+#define FORCE_BT_STEP_SEQ 117       // ok
 #define FORCE_BT_ARP 118
-#define FORCE_BT_COPY 122
+#define FORCE_BT_COPY 122           // ok
 #define FORCE_BT_COLUMN_PAD1 96
 #define FORCE_BT_COLUMN_PAD2 97
 #define FORCE_BT_COLUMN_PAD3 98
@@ -77,7 +89,6 @@ void LoadMappingFromConfFile(const char *confFileName);
 #define FORCE_BT_SOLO 92
 #define FORCE_BT_REC_ARM 93
 #define FORCE_BT_CLIP_STOP 94
-
 
 #define LIVEII_BT_ENCODER 0x6F
 #define LIVEII_BT_BANK_A 35
@@ -113,3 +124,4 @@ void LoadMappingFromConfFile(const char *confFileName);
 #define LIVEII_TRACK_MUTE 117
 #define LIVEII_TRACK_MIXER 116
 
+#endif
