@@ -11,6 +11,9 @@ void LoadMapping();
 size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size);
 void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
 
+extern void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint32_t rgbColorValue);
+extern void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b);
+
 // Pads Color cache captured from sysex events
 typedef struct
 {
@@ -18,6 +21,16 @@ typedef struct
     uint8_t g;
     uint8_t b;
 } ForceMPCPadColor_t;
+
+// Pad modes
+#define PAD_BANK_A_A     0      // Regular pads, lower left quadrant
+#define PAD_BANK_A_B     1      // Regular pads
+#define PAD_BANK_A_C     2
+#define PAD_BANK_A_D     3
+#define PAD_BANK_B       8      // Track settings pad
+#define PAD_BANK_C       9      // Track numbers and arrows
+#define PAD_BANK_D       10     // Scenes and arrows
+
 
 // Basic assignments
 #define FORCE_BT_ENCODER 0x6F       // ok

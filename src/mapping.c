@@ -40,15 +40,44 @@ static bool shiftHoldedMode = false;
 // To navigate in matrix quadran when MPC spoofing a Force
 static int MPCPad_OffsetL = 0;
 static int MPCPad_OffsetC = 0;
+static int MPCPadMode = PAD_BANK_A_A;
 
 // MPC Current pad bank.  A-H = 0-7
 // static int MPC_PadBank = BANK_A;
 
-// Columns modes in Force simulated on a MPC
-static int ForceColumnMode = -1;
-
-
+// Pads management
 static ForceMPCPadColor_t PadSysexColorsCache[256];
+
+// FORCE starts from top-left, MPC start from BOTTOM-left
+static const uint8_t MPCPadsBankA_A[] = {
+    FORCEPADS_TABLE_IDX_OFFSET + 32, FORCEPADS_TABLE_IDX_OFFSET + 33, FORCEPADS_TABLE_IDX_OFFSET + 34, FORCEPADS_TABLE_IDX_OFFSET + 35,
+    FORCEPADS_TABLE_IDX_OFFSET + 40, FORCEPADS_TABLE_IDX_OFFSET + 41, FORCEPADS_TABLE_IDX_OFFSET + 42, FORCEPADS_TABLE_IDX_OFFSET + 43,
+    FORCEPADS_TABLE_IDX_OFFSET + 48, FORCEPADS_TABLE_IDX_OFFSET + 49, FORCEPADS_TABLE_IDX_OFFSET + 50, FORCEPADS_TABLE_IDX_OFFSET + 51,
+    FORCEPADS_TABLE_IDX_OFFSET + 56, FORCEPADS_TABLE_IDX_OFFSET + 57, FORCEPADS_TABLE_IDX_OFFSET + 58, FORCEPADS_TABLE_IDX_OFFSET + 59};
+
+static const uint8_t MPCPadsBankA_B[] = {
+    FORCEPADS_TABLE_IDX_OFFSET + 36, FORCEPADS_TABLE_IDX_OFFSET + 37, FORCEPADS_TABLE_IDX_OFFSET + 38, FORCEPADS_TABLE_IDX_OFFSET + 39,
+    FORCEPADS_TABLE_IDX_OFFSET + 44, FORCEPADS_TABLE_IDX_OFFSET + 45, FORCEPADS_TABLE_IDX_OFFSET + 46, FORCEPADS_TABLE_IDX_OFFSET + 47,
+    FORCEPADS_TABLE_IDX_OFFSET + 52, FORCEPADS_TABLE_IDX_OFFSET + 53, FORCEPADS_TABLE_IDX_OFFSET + 54, FORCEPADS_TABLE_IDX_OFFSET + 55,
+    FORCEPADS_TABLE_IDX_OFFSET + 60, FORCEPADS_TABLE_IDX_OFFSET + 61, FORCEPADS_TABLE_IDX_OFFSET + 62, FORCEPADS_TABLE_IDX_OFFSET + 63};
+
+static const uint8_t MPCPadsBankA_C[] = {
+    FORCEPADS_TABLE_IDX_OFFSET + 0, FORCEPADS_TABLE_IDX_OFFSET + 1, FORCEPADS_TABLE_IDX_OFFSET + 2, FORCEPADS_TABLE_IDX_OFFSET + 3,
+    FORCEPADS_TABLE_IDX_OFFSET + 8, FORCEPADS_TABLE_IDX_OFFSET + 9, FORCEPADS_TABLE_IDX_OFFSET + 10, FORCEPADS_TABLE_IDX_OFFSET + 11,
+    FORCEPADS_TABLE_IDX_OFFSET + 16, FORCEPADS_TABLE_IDX_OFFSET + 17, FORCEPADS_TABLE_IDX_OFFSET + 18, FORCEPADS_TABLE_IDX_OFFSET + 19,
+    FORCEPADS_TABLE_IDX_OFFSET + 24, FORCEPADS_TABLE_IDX_OFFSET + 25, FORCEPADS_TABLE_IDX_OFFSET + 26, FORCEPADS_TABLE_IDX_OFFSET + 27};
+
+static const uint8_t MPCPadsBankA_D[] = {
+    FORCEPADS_TABLE_IDX_OFFSET + 4, FORCEPADS_TABLE_IDX_OFFSET + 5, FORCEPADS_TABLE_IDX_OFFSET + 6, FORCEPADS_TABLE_IDX_OFFSET + 7,
+    FORCEPADS_TABLE_IDX_OFFSET + 12, FORCEPADS_TABLE_IDX_OFFSET + 13, FORCEPADS_TABLE_IDX_OFFSET + 14, FORCEPADS_TABLE_IDX_OFFSET + 15,
+    FORCEPADS_TABLE_IDX_OFFSET + 20, FORCEPADS_TABLE_IDX_OFFSET + 21, FORCEPADS_TABLE_IDX_OFFSET + 22, FORCEPADS_TABLE_IDX_OFFSET + 23,
+    FORCEPADS_TABLE_IDX_OFFSET + 28, FORCEPADS_TABLE_IDX_OFFSET + 29, FORCEPADS_TABLE_IDX_OFFSET + 30, FORCEPADS_TABLE_IDX_OFFSET + 31};
+
+static const uint8_t MPCPadsBankB[] = {
+    0, FORCE_BT_ASSIGN_A, FORCE_BT_ASSIGN_B, FORCE_BT_MASTER,
+    FORCE_BT_MUTE, FORCE_BT_SOLO, FORCE_BT_REC_ARM, FORCE_BT_CLIP_STOP,
+    FORCE_BT_MUTE_PAD5, FORCE_BT_MUTE_PAD6, FORCE_BT_MUTE_PAD7, FORCE_BT_MUTE_PAD8,
+    FORCE_BT_MUTE_PAD1, FORCE_BT_MUTE_PAD2, FORCE_BT_MUTE_PAD3, FORCE_BT_MUTE_PAD4};
 
 ///////////////////////////////////////////////////////////////////////////////
 // (fake) load mapping tables from config file
@@ -74,7 +103,7 @@ void LoadMapping()
     map_ButtonsLeds[LIVEII_BT_MENU] = FORCE_BT_MENU;
     map_ButtonsLeds[LIVEII_BT_MAIN] = FORCE_BT_MATRIX;
     map_ButtonsLeds[LIVEII_BT_MIX] = FORCE_BT_MIXER;
-    map_ButtonsLeds[LIVEII_BT_MUTE] = FORCE_BT_STEP_SEQ;    // Or ARP? Meh.
+    map_ButtonsLeds[LIVEII_BT_MUTE] = FORCE_BT_STEP_SEQ; // Or ARP? Meh.
     map_ButtonsLeds[LIVEII_BT_NEXT_SEQ] = FORCE_BT_LAUNCH;
     map_ButtonsLeds[LIVEII_BT_REC] = FORCE_BT_REC;
     map_ButtonsLeds[LIVEII_BT_OVERDUB] = FORCE_BT_CLIP;
@@ -102,7 +131,6 @@ void LoadMapping()
     }
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // Prepare a fake midi message in the Private midi context
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,41 +141,41 @@ void PrepareFakeMidiMsg(uint8_t buf[])
     buf[2] = 0x00;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Show the current MPC quadran within the Force matrix
-///////////////////////////////////////////////////////////////////////////////
-static void Mpc_ShowForceMatrixQuadran(uint8_t forcePadL, uint8_t forcePadC)
-{
+// ///////////////////////////////////////////////////////////////////////////////
+// // Show the current MPC quadran within the Force matrix
+// ///////////////////////////////////////////////////////////////////////////////
+// static void Mpc_ShowForceMatrixQuadran(uint8_t forcePadL, uint8_t forcePadC)
+// {
 
-    uint8_t sysexBuff[12] = {0xF0, 0x47, 0x7F, 0x40, 0x65, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0xF7};
-    //                                                                 [Pad #] [R]   [G]   [B]
-    sysexBuff[3] = DeviceInfoBloc[MPCOriginalId].sysexId;
+//     uint8_t sysexBuff[12] = {0xF0, 0x47, 0x7F, 0x40, 0x65, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0xF7};
+//     //                                                                 [Pad #] [R]   [G]   [B]
+//     sysexBuff[3] = DeviceInfoBloc[MPCOriginalId].sysexId;
 
-    uint8_t q = (forcePadL == 4 ? 0 : 1) * 4 + (forcePadC == 4 ? 3 : 2);
+//     uint8_t q = (forcePadL == 4 ? 0 : 1) * 4 + (forcePadC == 4 ? 3 : 2);
 
-    for (int l = 0; l < 2; l++)
-    {
-        for (int c = 0; c < 2; c++)
-        {
-            sysexBuff[7] = l * 4 + c + 2;
-            if (sysexBuff[7] == q)
-            {
-                sysexBuff[8] = 0x7F;
-                sysexBuff[9] = 0x7F;
-                sysexBuff[10] = 0x7F;
-            }
-            else
-            {
-                sysexBuff[8] = 0x7F;
-                sysexBuff[9] = 0x00;
-                sysexBuff[10] = 0x00;
-            }
-            // tklog_debug("[tkgl] MPC Pad quadran : l,c %d,%d Pad %d r g b %02X %02X %02X\n",forcePadL,forcePadC,sysexBuff[7],sysexBuff[8],sysexBuff[9],sysexBuff[10]);
+//     for (int l = 0; l < 2; l++)
+//     {
+//         for (int c = 0; c < 2; c++)
+//         {
+//             sysexBuff[7] = l * 4 + c + 2;
+//             if (sysexBuff[7] == q)
+//             {
+//                 sysexBuff[8] = 0x7F;
+//                 sysexBuff[9] = 0x7F;
+//                 sysexBuff[10] = 0x7F;
+//             }
+//             else
+//             {
+//                 sysexBuff[8] = 0x7F;
+//                 sysexBuff[9] = 0x00;
+//                 sysexBuff[10] = 0x00;
+//             }
+//             // tklog_debug("[tkgl] MPC Pad quadran : l,c %d,%d Pad %d r g b %02X %02X %02X\n",forcePadL,forcePadC,sysexBuff[7],sysexBuff[8],sysexBuff[9],sysexBuff[10]);
 
-            orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, sizeof(sysexBuff));
-        }
-    }
-}
+//             orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, sizeof(sysexBuff));
+//         }
+//     }
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Refresh MPC pads colors from Force PAD Colors cache
@@ -179,31 +207,122 @@ void Mpc_ResfreshPadsColorFromForceCache(uint8_t padL, uint8_t padC, uint8_t nbL
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Draw a pad line on MPC pads from a Force PAD line in the current Colors cache
-///////////////////////////////////////////////////////////////////////////////
-void Mpc_DrawPadLineFromForceCache(uint8_t forcePadL, uint8_t forcePadC, uint8_t mpcPadL)
+////////
+// Completely redraw the pads according to the mode we're in
+////////
+void Mpc_DrawPadsFromForceCache()
 {
-
     uint8_t sysexBuff[12] = {0xF0, 0x47, 0x7F, 0x40, 0x65, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0xF7};
     //                                                                 [Pad #] [R]   [G]   [B]
     sysexBuff[3] = DeviceInfoBloc[MPCOriginalId].sysexId;
 
-    uint8_t p = forcePadL * 8 + forcePadC;
+    uint8_t p = 0;
 
     for (int c = 0; c < 4; c++)
     {
-        sysexBuff[7] = mpcPadL * 4 + c;
-        p = forcePadL * 8 + c + forcePadC;
-        sysexBuff[8] = PadSysexColorsCache[p].r;
-        sysexBuff[9] = PadSysexColorsCache[p].g;
-        sysexBuff[10] = PadSysexColorsCache[p].b;
+        for (int l = 0; l < 4; l++)
+        {
+            sysexBuff[7] = l * 4 + c;
+            p = l * 8 + c;
 
-        // tklog_debug("[tkgl] MPC Pad Line refresh : %d r g b %02X %02X %02X\n",sysexBuff[7],sysexBuff[8],sysexBuff[9],sysexBuff[10]);
+            sysexBuff[8] = PadSysexColorsCache[p].r;
+            sysexBuff[9] = PadSysexColorsCache[p].g;
+            sysexBuff[10] = PadSysexColorsCache[p].b;
 
-        orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, sizeof(sysexBuff));
+            // tklog_debug("[tkgl] MPC Pad Line refresh : %d r g b %02X %02X %02X\n",sysexBuff[7],sysexBuff[8],sysexBuff[9],sysexBuff[10]);
+            orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, sizeof(sysexBuff));
+        }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Set pad colors
+///////////////////////////////////////////////////////////////////////////////
+// 2 implementations : call with a 32 bits color int value or with r,g,b values
+// Pad number starts from top left (0), 8 pads per line
+void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b)
+{
+
+    uint8_t sysexBuff[128];
+    char sysexBuffDebug[128];
+    int p = 0;
+
+    // Set pad number correctly
+    uint8_t padNumber = padL * 8 + padC;
+
+    // F0 47 7F [3B] 65 00 04 [Pad #] [R] [G] [B] F7
+    memcpy(sysexBuff, AkaiSysex, sizeof(AkaiSysex));
+    p += sizeof(AkaiSysex);
+
+    // Add the current product id
+    sysexBuff[p++] = DeviceInfoBloc[MPCOriginalId].sysexId;
+    tklog_debug("[tkgl] MPC Id : %02X\n", sysexBuff[p - 1]);
+
+    // Add the pad color fn and pad number and color
+    memcpy(&sysexBuff[p], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn));
+    p += sizeof(MPCSysexPadColorFn);
+    sysexBuff[p++] = padNumber;
+
+    // Issue the color message
+    sysexBuff[p++] = r;
+    sysexBuff[p++] = g;
+    sysexBuff[p++] = b;
+    sysexBuff[p++] = 0xF7;
+
+    // Use tklog to debug the whole sysexBuff as a list of hexadecimal values.
+    // We first create a string with the whole sysexBuff and then we print it.
+    // This is a bit more efficient than printing each byte separately.
+    // We store this in sysexBuffDebug string
+    // Avoid using sprintf
+    sysexBuffDebug[0] = '\0';
+    for (int i = 0; i < p; i++)
+    {
+        sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "%02X ", sysexBuff[i]);
+    }
+    sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "\n");
+    tklog_debug("%s", sysexBuffDebug);
+
+    // Send the sysex to the MPC controller
+    snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
+}
+
+void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint32_t rgbColorValue)
+{
+
+    // Colors R G B max value is 7f in SYSEX. So the bit 8 is always set to 0.
+
+    uint8_t r = (rgbColorValue >> 16) & 0x7F;
+    uint8_t g = (rgbColorValue >> 8) & 0x7F;
+    uint8_t b = rgbColorValue & 0x7F;
+
+    SetPadColor(padL, padC, r, g, b);
+}
+
+// ///////////////////////////////////////////////////////////////////////////////
+// // Draw a pad line on MPC pads from a Force PAD line in the current Colors cache
+// ///////////////////////////////////////////////////////////////////////////////
+// void Mpc_DrawPadLineFromForceCache(uint8_t forcePadL, uint8_t forcePadC, uint8_t mpcPadL)
+// {
+
+//     uint8_t sysexBuff[12] = {0xF0, 0x47, 0x7F, 0x40, 0x65, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0xF7};
+//     //                                                                 [Pad #] [R]   [G]   [B]
+//     sysexBuff[3] = DeviceInfoBloc[MPCOriginalId].sysexId;
+
+//     uint8_t p = forcePadL * 8 + forcePadC;
+
+//     for (int c = 0; c < 4; c++)
+//     {
+//         sysexBuff[7] = mpcPadL * 4 + c;
+//         p = forcePadL * 8 + c + forcePadC;
+//         sysexBuff[8] = PadSysexColorsCache[p].r;
+//         sysexBuff[9] = PadSysexColorsCache[p].g;
+//         sysexBuff[10] = PadSysexColorsCache[p].b;
+
+//         // tklog_debug("[tkgl] MPC Pad Line refresh : %d r g b %02X %02X %02X\n",sysexBuff[7],sysexBuff[8],sysexBuff[9],sysexBuff[10]);
+
+//         orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, sizeof(sysexBuff));
+//     }
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 // MIDI READ - APP ON MPC READING AS FORCE
@@ -290,64 +409,64 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 
             // tklog_debug("Mapping found for 0x%02x : 0x%02x \n",myBuff[i+1],mapValue);
 
-            // Manage shift mapping at destination
-            // Not a shift mapping.  Disable the current shift mode
-            if (mapValue < 0x80)
-            {
-                if (myBuff[i + 2] == 0x7f)
-                { // Key press
-                    if (shiftHoldedMode)
-                    {
-                        if (size > maxSize - 3)
-                            fprintf(stdout, "Warning : midi buffer overflow when inserting SHIFT key release !!\n");
-                        memcpy(&myBuff[i + 3], &myBuff[i], size - i);
-                        size += 3;
-                        myBuff[i + 1] = SHIFT_KEY_VALUE;
-                        myBuff[i + 2] = 0x00; // Button SHIFT release insert
-                        i += 3;
-                    }
-                }
-            }
-            else
-            { // Shift at destination
-                if (myBuff[i + 2] == 0x7f)
-                { // Key press
-                    if (!shiftHoldedMode)
-                    {
-                        if (size > maxSize - 3)
-                            fprintf(stdout, "Warning : midi buffer overflow when inserting SHIFT key press !!\n");
-                        memcpy(&myBuff[i + 3], &myBuff[i], size - i);
-                        size += 3;
-                        myBuff[i + 1] = SHIFT_KEY_VALUE;
-                        myBuff[i + 2] = 0x07; // Button SHIFT press insert
-                        i += 3;
-                    }
-                }
-                mapValue -= 0x80;
-            }
+            // // Manage shift mapping at destination
+            // // Not a shift mapping.  Disable the current shift mode
+            // if (mapValue < 0x80)
+            // {
+            //     if (myBuff[i + 2] == 0x7f)
+            //     { // Key press
+            //         if (shiftHoldedMode)
+            //         {
+            //             if (size > maxSize - 3)
+            //                 fprintf(stdout, "Warning : midi buffer overflow when inserting SHIFT key release !!\n");
+            //             memcpy(&myBuff[i + 3], &myBuff[i], size - i);
+            //             size += 3;
+            //             myBuff[i + 1] = SHIFT_KEY_VALUE;
+            //             myBuff[i + 2] = 0x00; // Button SHIFT release insert
+            //             i += 3;
+            //         }
+            //     }
+            // }
+            // else
+            // { // Shift at destination
+            //     if (myBuff[i + 2] == 0x7f)
+            //     { // Key press
+            //         if (!shiftHoldedMode)
+            //         {
+            //             if (size > maxSize - 3)
+            //                 fprintf(stdout, "Warning : midi buffer overflow when inserting SHIFT key press !!\n");
+            //             memcpy(&myBuff[i + 3], &myBuff[i], size - i);
+            //             size += 3;
+            //             myBuff[i + 1] = SHIFT_KEY_VALUE;
+            //             myBuff[i + 2] = 0x07; // Button SHIFT press insert
+            //             i += 3;
+            //         }
+            //     }
+            //     mapValue -= 0x80;
+            // }
 
-            // Key press Post mapping
-            // Activate the special column mode when Force spoofed on a MPC
-            // Colum mode Button pressed
-            switch (mapValue)
-            {
-            case FORCE_MUTE:
-            case FORCE_SOLO:
-            case FORCE_REC_ARM:
-            case FORCE_CLIP_STOP:
-                if (myBuff[i + 2] == 0x7F)
-                { // Key press
-                    ForceColumnMode = mapValue;
-                    Mpc_DrawPadLineFromForceCache(8, MPCPad_OffsetC, 3);
-                    Mpc_ShowForceMatrixQuadran(MPCPad_OffsetL, MPCPad_OffsetC);
-                }
-                else
-                {
-                    ForceColumnMode = -1;
-                    Mpc_ResfreshPadsColorFromForceCache(MPCPad_OffsetL, MPCPad_OffsetC, 4);
-                }
-                break;
-            }
+            // // Key press Post mapping
+            // // Activate the special column mode when Force spoofed on a MPC
+            // // Colum mode Button pressed
+            // switch (mapValue)
+            // {
+            // case FORCE_MUTE:
+            // case FORCE_SOLO:
+            // case FORCE_REC_ARM:
+            // case FORCE_CLIP_STOP:
+            //     if (myBuff[i + 2] == 0x7F)
+            //     { // Key press
+            //         ForceColumnMode = mapValue;
+            //         Mpc_DrawPadLineFromForceCache(8, MPCPad_OffsetC, 3);
+            //         Mpc_ShowForceMatrixQuadran(MPCPad_OffsetL, MPCPad_OffsetC);
+            //     }
+            //     else
+            //     {
+            //         ForceColumnMode = -1;
+            //         Mpc_ResfreshPadsColorFromForceCache(MPCPad_OffsetL, MPCPad_OffsetC, 4);
+            //     }
+            //     break;
+            // }
             myBuff[i + 1] = mapValue;
 
             i += 3;
@@ -367,7 +486,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             // Compute the Force pad id without offset
             uint8_t padF = (3 - padL + MPCPad_OffsetL) * 8 + padC + MPCPad_OffsetC;
 
-            if (shiftHoldedMode || ForceColumnMode >= 0)
+            if (MPCPadMode >= PAD_BANK_B)
             {
                 // Ignore aftertouch in special pad modes
                 if (myBuff[i] == 0xA9)
@@ -381,12 +500,12 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 uint8_t offsetC = MPCPad_OffsetC;
                 uint8_t offsetL = MPCPad_OffsetL;
 
-                // Columns solo mute mode on first pad line
-                if (ForceColumnMode >= 0 && padL == 3)
-                    padM = 0x7F; // Simply to pass in the switch case
-                // LAUNCH ROW SHIFT + PAD  in column 0 = Launch the corresponding line
-                else if (shiftHoldedMode && padC == 0)
-                    padM = 0x7E; // Simply to pass in the switch case
+                // // Columns solo mute mode on first pad line
+                // if (ForceColumnMode >= 0 && padL == 3)
+                //     padM = 0x7F; // Simply to pass in the switch case
+                // // LAUNCH ROW SHIFT + PAD  in column 0 = Launch the corresponding line
+                // else if (shiftHoldedMode && padC == 0)
+                //     padM = 0x7E; // Simply to pass in the switch case
 
                 switch (padM)
                 {
@@ -415,34 +534,34 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                     if (shiftHoldedMode)
                         buttonValue = FORCE_DOWN;
                     break;
-                // PAd as quadran
-                case 6:
-                    if (ForceColumnMode >= 0)
-                    {
-                        offsetL = offsetC = 0;
-                    }
-                    break;
-                case 7:
-                    if (ForceColumnMode >= 0)
-                    {
-                        offsetL = 0;
-                        offsetC = 4;
-                    }
-                    break;
-                case 2:
-                    if (ForceColumnMode >= 0)
-                    {
-                        offsetL = 4;
-                        offsetC = 0;
-                    }
-                    break;
-                case 3:
-                    if (ForceColumnMode >= 0)
-                    {
-                        offsetL = 4;
-                        offsetC = 4;
-                    }
-                    break;
+                // // PAd as quadran
+                // case 6:
+                //     if (ForceColumnMode >= 0)
+                //     {
+                //         offsetL = offsetC = 0;
+                //     }
+                //     break;
+                // case 7:
+                //     if (ForceColumnMode >= 0)
+                //     {
+                //         offsetL = 0;
+                //         offsetC = 4;
+                //     }
+                //     break;
+                // case 2:
+                //     if (ForceColumnMode >= 0)
+                //     {
+                //         offsetL = 4;
+                //         offsetC = 0;
+                //     }
+                //     break;
+                // case 3:
+                //     if (ForceColumnMode >= 0)
+                //     {
+                //         offsetL = 4;
+                //         offsetC = 4;
+                //     }
+                //     break;
                 default:
                     PrepareFakeMidiMsg(&myBuff[i]);
                     i += 3;
@@ -468,7 +587,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                     MPCPad_OffsetC = offsetC;
                     // tklog_debug("Quadran nav = %d \n", buttonValue) ;
                     Mpc_ResfreshPadsColorFromForceCache(MPCPad_OffsetL, MPCPad_OffsetC, 4);
-                    Mpc_ShowForceMatrixQuadran(MPCPad_OffsetL, MPCPad_OffsetC);
+                    // Mpc_ShowForceMatrixQuadran(MPCPad_OffsetL, MPCPad_OffsetC);
                     PrepareFakeMidiMsg(&myBuff[i]);
                     i += 3;
                     continue; // next msg
@@ -500,8 +619,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 
     uint8_t *myBuff = (uint8_t *)midiBuffer;
 
-    bool refreshMutePadLine = false;
-    bool refreshOptionPadLines = false;
+    bool refreshPads = false;
+    // bool refreshOptionPadLines = false;
 
     size_t i = 0;
     while (i < size)
@@ -544,13 +663,13 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                     }
                 }
 
-                // Take care of the pad mutes mode line 0 on the MPC, line 8 on Force
-                // Shift must not be pressed else it shows the sub option of lines 8/9
-                // and not the state of solo/mut/rec arm etc...
-                if (padL == 8 && !shiftHoldedMode && ForceColumnMode >= 0)
-                    refreshMutePadLine = true;
-                else if ((padL == 8 || padL == 9) && shiftHoldedMode && ForceColumnMode < 0)
-                    refreshOptionPadLines = true;
+                // // Take care of the pad mutes mode line 0 on the MPC, line 8 on Force
+                // // Shift must not be pressed else it shows the sub option of lines 8/9
+                // // and not the state of solo/mut/rec arm etc...
+                // if (padL == 8 && !shiftHoldedMode && ForceColumnMode >= 0)
+                //     refreshMutePadLine = true;
+                // else if ((padL == 8 || padL == 9) && shiftHoldedMode && ForceColumnMode < 0)
+                //     refreshOptionPadLines = true;
 
                 // tklog_debug("Mpc pad transposed : %d \n",padM);
 
@@ -579,14 +698,14 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
     }
 
     // Check if mute pad line changed
-    if (refreshMutePadLine)
-        Mpc_DrawPadLineFromForceCache(8, MPCPad_OffsetC, 3);
-    else if (refreshOptionPadLines)
-    {
+    if (refreshPads)
+        Mpc_DrawPadsFromForceCache();
+    // else if (refreshOptionPadLines)
+    // {
 
-        // Mpc_DrawPadLineFromForceCache(9, 0, 3);
-        // Mpc_DrawPadLineFromForceCache(9, 4, 3);
-        // Mpc_DrawPadLineFromForceCache(8, 0, 2);
-        // Mpc_DrawPadLineFromForceCache(8, 4, 2);
-    }
+    //     // Mpc_DrawPadLineFromForceCache(9, 0, 3);
+    //     // Mpc_DrawPadLineFromForceCache(9, 4, 3);
+    //     // Mpc_DrawPadLineFromForceCache(8, 0, 2);
+    //     // Mpc_DrawPadLineFromForceCache(8, 4, 2);
+    // }
 }

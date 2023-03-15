@@ -78,8 +78,11 @@ __ __| |           |  /_) |     ___|             |           |\n\
 #define COLOR_RED 0x7F0000
 #define COLOR_BLUE 0x00007F
 #define COLOR_GREEN 0x007F00
-#define COLOR_YELLOW 0x007F7F
+#define COLOR_YELLOW 0x7F7F00
+#define COLOR_CYAN 0x007F7F
 #define COLOR_MAGENTA 0x7F007F
+#define COLOR_CORAL 0xFF0077
+#define COLOR_PINK 0xFFC0CB
 
 // Mute pads mod button value
 #define FORCE_ASSIGN_A 123
@@ -224,5 +227,24 @@ extern int MPCSpoofedID;
 // Faked functions
 extern typeof(&snd_rawmidi_read) orig_snd_rawmidi_read;
 extern typeof(&snd_rawmidi_write) orig_snd_rawmidi_write;
+
+// Debug stuff
+enum
+{
+    LOG_TRACE,
+    LOG_DEBUG,
+    LOG_INFO,
+    LOG_WARN,
+    LOG_ERROR,
+    LOG_FATAL
+};
+extern void tklog(int level, const char *fmt, ...);
+#define tklog_trace(...) tklog(LOG_TRACE, __VA_ARGS__)
+#define tklog_debug(...) tklog(LOG_DEBUG, __VA_ARGS__)
+#define tklog_info(...) tklog(LOG_INFO, __VA_ARGS__)
+#define tklog_warn(...) tklog(LOG_WARN, __VA_ARGS__)
+#define tklog_error(...) tklog(LOG_ERROR, __VA_ARGS__)
+#define tklog_fatal(...) tklog(LOG_FATAL, __VA_ARGS__)
+
 
 #endif

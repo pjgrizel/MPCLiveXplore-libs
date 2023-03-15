@@ -59,27 +59,10 @@ your own midi mapping to input and output midi messages.
 
 // Log utilities ---------------------------------------------------------------
 
-enum
-{
-    LOG_TRACE,
-    LOG_DEBUG,
-    LOG_INFO,
-    LOG_WARN,
-    LOG_ERROR,
-    LOG_FATAL
-};
-
-#define tklog_trace(...) tklog(LOG_TRACE, __VA_ARGS__)
-#define tklog_debug(...) tklog(LOG_DEBUG, __VA_ARGS__)
-#define tklog_info(...) tklog(LOG_INFO, __VA_ARGS__)
-#define tklog_warn(...) tklog(LOG_WARN, __VA_ARGS__)
-#define tklog_error(...) tklog(LOG_ERROR, __VA_ARGS__)
-#define tklog_fatal(...) tklog(LOG_FATAL, __VA_ARGS__)
-
 static const char *tklog_level_strings[] = {
     "TRACE", "DEBUG", "INFO", "WARN", "***ERROR", "***FATAL"};
 
-static void tklog(int level, const char *fmt, ...)
+void tklog(int level, const char *fmt, ...)
 {
 
     va_list ap;
@@ -141,7 +124,6 @@ static int pws_voltage_file_handler = -1;
 static int pws_present_file_handler = -1;
 static int pws_status_file_handler = -1;
 static int pws_capacity_file_handler = -1;
-
 
 // MPC alsa informations
 static int mpc_midi_card = -1;
@@ -216,52 +198,6 @@ int match(const char *string, const char *pattern)
         return (0); /* Report error. */
     }
     return (1);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Set pad colors
-///////////////////////////////////////////////////////////////////////////////
-// 2 implementations : call with a 32 bits color int value or with r,g,b values
-void SetPadColor(const uint8_t mpcId, const uint8_t padNumber, const uint8_t r, const uint8_t g, const uint8_t b)
-{
-
-    uint8_t sysexBuff[128];
-    int p = 0;
-
-    // F0 47 7F [3B] 65 00 04 [Pad #] [R] [G] [B] F7
-
-    memcpy(sysexBuff, AkaiSysex, sizeof(AkaiSysex));
-    p += sizeof(AkaiSysex);
-
-    // Add the current product id
-    sysexBuff[p++] = mpcId;
-
-    // Add the pad color fn and pad number and color
-    memcpy(&sysexBuff[p], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn));
-    sysexBuff[p++] = padNumber;
-
-    // #define COLOR_CORAL      00FF0077
-
-    sysexBuff[p++] = r;
-    sysexBuff[p++] = g;
-    sysexBuff[p++] = b;
-
-    sysexBuff[p++] = 0xF7;
-
-    // Send the sysex to the MPC controller
-    snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
-}
-
-void SetPadColorFromColorInt(const uint8_t mpcId, const uint8_t padNumber, const uint32_t rgbColorValue)
-{
-
-    // Colors R G B max value is 7f in SYSEX. So the bit 8 is always set to 0.
-
-    uint8_t r = (rgbColorValue >> 16) & 0x7F;
-    uint8_t g = (rgbColorValue >> 8) & 0x7F;
-    uint8_t b = rgbColorValue & 0x7F;
-
-    SetPadColor(mpcId, padNumber, r, g, b);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -706,6 +642,32 @@ static void tkgl_init()
     // Show battery status
     displayBatteryStatus();
 
+    // Show 'PJ' on the pads!
+    /*
+        [x] [x] [ ] [y]
+        [x] [x] [ ] [y]
+        [x] [ ] [y] [y]
+        [x] [ ] [y] [y]
+    */
+    tklog_info("Setting pads colors...\n");
+    SetPadColorFromColorInt(0, 0, COLOR_CYAN);
+    SetPadColorFromColorInt(0, 1, COLOR_CYAN);
+    SetPadColorFromColorInt(0, 2, COLOR_BLACK);
+    SetPadColorFromColorInt(0, 3, COLOR_PINK);
+    SetPadColorFromColorInt(1, 0, COLOR_CYAN);
+    SetPadColorFromColorInt(1, 1, COLOR_CYAN);
+    SetPadColorFromColorInt(1, 2, COLOR_BLACK);
+    SetPadColorFromColorInt(1, 3, COLOR_PINK);
+    SetPadColorFromColorInt(2, 0, COLOR_CYAN);
+    SetPadColorFromColorInt(2, 1, COLOR_BLACK);
+    SetPadColorFromColorInt(2, 2, COLOR_PINK);
+    SetPadColorFromColorInt(2, 3, COLOR_PINK);
+    SetPadColorFromColorInt(3, 0, COLOR_CYAN);
+    SetPadColorFromColorInt(3, 1, COLOR_BLACK);
+    SetPadColorFromColorInt(3, 2, COLOR_PINK);
+    SetPadColorFromColorInt(3, 3, COLOR_PINK);
+    tklog_info("DONE...\n");
+
     fflush(stdout);
 }
 
@@ -948,7 +910,6 @@ int snd_rawmidi_close(snd_rawmidi_t *rawmidi)
 
     return orig_snd_rawmidi_close(rawmidi);
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Alsa Rawmidi read
