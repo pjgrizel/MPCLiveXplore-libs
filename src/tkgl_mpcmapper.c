@@ -668,6 +668,10 @@ static void tkgl_init()
     SetPadColorFromColorInt(3, 3, COLOR_PINK);
     tklog_info("DONE...\n");
 
+    // Show "BANK A" mode
+    uint8_t bt_bank_a[] = {0xB0, BANK_D, BUTTON_COLOR_RED};
+    orig_snd_rawmidi_write(rawvirt_outpriv, bt_bank_a, sizeof(bt_bank_a));
+
     fflush(stdout);
 }
 
@@ -977,7 +981,6 @@ ssize_t snd_rawmidi_read(snd_rawmidi_t *rawmidi, void *buffer, size_t size)
 ///////////////////////////////////////////////////////////////////////////////
 ssize_t snd_rawmidi_write(snd_rawmidi_t *rawmidi, const void *buffer, size_t size)
 {
-
     if (rawMidiDumpFlag)
         RawMidiDump(rawmidi, 'i', 'w', buffer, size);
 
@@ -1019,6 +1022,7 @@ ssize_t snd_rawmidi_write(snd_rawmidi_t *rawmidi, const void *buffer, size_t siz
     }
 
     // Every 60 seconds, we display the battery status
+    // XXX TODO: Move this to the "tap tempo" section
     if (time(NULL) - lastLightBulbUpdate > 60)
     {
         lastLightBulbUpdate = time(NULL);

@@ -105,6 +105,13 @@ __ __| |           |  /_) |     ___|             |           |\n\
 #define BANK_C 0x25
 #define BANK_D 0X26
 
+// Button colors
+#define BUTTON_COLOR_OFF          0x00
+#define BUTTON_COLOR_RED_LIGHT    0x01
+#define BUTTON_COLOR_YELLOW_LIGHT 0x02
+#define BUTTON_COLOR_RED          0x03
+#define BUTTON_COLOR_YELLOW       0x04
+
 // The shift value is hard coded here because it is equivalent whatever the platform is
 #define SHIFT_KEY_VALUE 49
 

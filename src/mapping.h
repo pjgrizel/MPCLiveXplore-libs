@@ -23,13 +23,13 @@ typedef struct
 } ForceMPCPadColor_t;
 
 // Pad modes
-#define PAD_BANK_A_A     0      // Regular pads, lower left quadrant
-#define PAD_BANK_A_B     1      // Regular pads
-#define PAD_BANK_A_C     2
-#define PAD_BANK_A_D     3
-#define PAD_BANK_B       8      // Track settings pad
-#define PAD_BANK_C       9      // Track numbers and arrows
-#define PAD_BANK_D       10     // Scenes and arrows
+#define PAD_BANK_A_A     0x01       // Regular pads, lower left quadrant
+#define PAD_BANK_A_B     0x02       // Regular pads
+#define PAD_BANK_A_C     0x04
+#define PAD_BANK_A_D     0x08
+#define PAD_BANK_B       0x20       // Track settings pad
+#define PAD_BANK_C       0x40       // Track numbers and arrows
+#define PAD_BANK_D       0x80       // Scenes and arrows
 
 
 // Basic assignments
