@@ -89,77 +89,77 @@ static const uint8_t MPCToForceD[] = {
 // Here we convert the Force pad number to MPC bank.
 static const uint8_t ForcePadNumberToMPCBank[] = {
     // Line 0
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
     // Line 1
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
     // Line 2
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
     // Line 3
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
     // Line 4
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
     // Line 5
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
     // Line 6
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
     // Line 7
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_C,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
+    PAD_BANK_A_D,
     // Line 9 (mute modes)
     PAD_BANK_B,
     PAD_BANK_B,
@@ -691,6 +691,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             // Select bank mode.
             // Here we use BankA button as a pseudo-shift.
             // In any case if we're manipulating BANK buttons, we kill the event.
+            bool layerBanksBCD = bankAHoldMode || (MPCPadMode == PAD_BANK_B) || (MPCPadMode == PAD_BANK_C) || (MPCPadMode == PAD_BANK_D);
             if (myBuff[i + 1] == LIVEII_BT_BANK_A)
             {
                 if (myBuff[i + 2] == 0x7F)
@@ -709,7 +710,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += 3;
                 continue;
             }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_B) && bankAHoldMode == false)
+            else if ((myBuff[i + 1] == LIVEII_BT_BANK_B) && layerBanksBCD == false)
             {
                 if (myBuff[i + 2] == 0x7F)
                     MPCSwitchMatrix(PAD_BANK_A_B);
@@ -719,7 +720,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += 3;
                 continue;
             }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_C) && bankAHoldMode == false)
+            else if ((myBuff[i + 1] == LIVEII_BT_BANK_C) && layerBanksBCD == false)
             {
                 if (myBuff[i + 2] == 0x7F)
                     MPCSwitchMatrix(PAD_BANK_A_C);
@@ -729,7 +730,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += 3;
                 continue;
             }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_D) && bankAHoldMode == false)
+            else if ((myBuff[i + 1] == LIVEII_BT_BANK_D) && layerBanksBCD == false)
             {
                 if (myBuff[i + 2] == 0x7F)
                     MPCSwitchMatrix(PAD_BANK_A_D);
@@ -739,7 +740,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += 3;
                 continue;
             }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_B) && bankAHoldMode == true)
+            else if ((myBuff[i + 1] == LIVEII_BT_BANK_B) && layerBanksBCD == true)
             {
                 if (myBuff[i + 2] == 0x7F)
                     MPCSwitchMatrix(PAD_BANK_B);
@@ -749,7 +750,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += 3;
                 continue;
             }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_C) && bankAHoldMode == true)
+            else if ((myBuff[i + 1] == LIVEII_BT_BANK_C) && layerBanksBCD == true)
             {
                 if (myBuff[i + 2] == 0x7F)
                     MPCSwitchMatrix(PAD_BANK_C);
@@ -759,7 +760,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += 3;
                 continue;
             }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_D) && bankAHoldMode == true)
+            else if ((myBuff[i + 1] == LIVEII_BT_BANK_D) && layerBanksBCD == true)
             {
                 if (myBuff[i + 2] == 0x7F)
                     MPCSwitchMatrix(PAD_BANK_D);
