@@ -716,14 +716,43 @@ void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint
 // from 0 (top left) to 15 (bottom right)
 uint8_t getMpcPadNumber(uint8_t note_number)
 {
-    int target_index = MPCPADS_TABLE_IDX_OFFSET - note_number;
-    if (target_index < 0 || target_index > 15)
+    switch(note_number)
     {
-        tklog_error("MPC Pad Line refresh : wrong note number %d\n", note_number);
-        return 0;
+        case LIVEII_PAD_TL0:
+            return 0;
+        case LIVEII_PAD_TL1:
+            return 1;
+        case LIVEII_PAD_TL2:
+            return 2;
+        case LIVEII_PAD_TL3:
+            return 3;
+        case LIVEII_PAD_TL4:
+            return 4;
+        case LIVEII_PAD_TL5:
+            return 5;
+        case LIVEII_PAD_TL6:
+            return 6;
+        case LIVEII_PAD_TL7:
+            return 7;
+        case LIVEII_PAD_TL8:
+            return 8;
+        case LIVEII_PAD_TL9:
+            return 9;
+        case LIVEII_PAD_TL10:
+            return 10;
+        case LIVEII_PAD_TL11:
+            return 11;
+        case LIVEII_PAD_TL12:
+            return 12;
+        case LIVEII_PAD_TL13:
+            return 13;
+        case LIVEII_PAD_TL14:
+            return 14;
+        case LIVEII_PAD_TL15:
+            return 15;
+        default:
+            return 0;
     }
-    tklog_debug("MPC Pad Line refresh : note number %02x -> pad number %02x\n", note_number, MPCPadsTable[target_index]);
-    return MPCPadsTable[target_index];
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -914,6 +943,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             // Either we're in banks A_x, in which case we just remap the pad number
             // Or we're in banks B, C, D, in which case we remap the message completely!
             int pad_number = getMpcPadNumber(myBuff[i + 1]);
+            tklog_debug("Pad number is %d \n", pad_number);
             switch (MPCPadMode)
             {
             case PAD_BANK_A_A:
@@ -945,13 +975,23 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 switch (MPCPadMode)
                 {
                 case PAD_BANK_B:
+                    tklog_debug("...converting input %02x %02x %02x ...\n",
+                                myBuff[i], myBuff[i + 1], myBuff[i + 2]);
+                    myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
                     myBuff[i + 1] = MPCToForceB[pad_number];
+                    myBuff[i] = 0x90;
+                    tklog_debug("......to %02x %02x %02x\n",
+                                myBuff[i], myBuff[i + 1], myBuff[i + 2]);
                     break;
                 case PAD_BANK_C:
+                    myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
                     myBuff[i + 1] = MPCToForceC[pad_number];
+                    myBuff[i] = 0x90;
                     break;
                 case PAD_BANK_D:
+                    myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
                     myBuff[i + 1] = MPCToForceD[pad_number];
+                    myBuff[i] = 0x90;
                     break;
                 }
             }
@@ -1039,19 +1079,29 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         // Check if we must remap...
         else if (myBuff[i] == 0xB0)
         {
+            if (myBuff[i+1] != 0x35)
+                tklog_debug("App wants to write to the Force button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+
             // Simple remapping
             if (map_ButtonsLeds_Inv[myBuff[i + 1]] >= 0)
             {
                 // tklog_debug("MAP INV %d->%d\n",myBuff[i+1],map_ButtonsLeds_Inv[ myBuff[i+1] ]);
                 myBuff[i + 1] = map_ButtonsLeds_Inv[myBuff[i + 1]];
+                if (myBuff[i+1] != 0x35)
+                    tklog_debug("...remapped to button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
             }
-            i += 3;
-
-            // Complex remapping (from Force *NOTE NUMBER* to pad)
-            if (myBuff[i + 2] == 0x7F)
-                SetForceMatrixButton(myBuff[i + 1], true);
             else
-                SetForceMatrixButton(myBuff[i + 1], false);
+            {
+                // Complex remapping (from Force *NOTE NUMBER* to pad)
+                tklog_debug("...complex remapping of button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+                if (myBuff[i + 2] == 0x7F)
+                    SetForceMatrixButton(myBuff[i + 1], true);
+                else
+                    SetForceMatrixButton(myBuff[i + 1], false);
+            }
+
+            // Next message
+            i += 3;
         }
 
         else

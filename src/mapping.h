@@ -137,4 +137,23 @@ typedef struct
 #define LIVEII_TRACK_MUTE 117
 #define LIVEII_TRACK_MIXER 116
 
+// Pads in top-left=0 order
+#define LIVEII_PAD_TL0 0x31
+#define LIVEII_PAD_TL1 0x37
+#define LIVEII_PAD_TL2 0x33
+#define LIVEII_PAD_TL3 0x35
+#define LIVEII_PAD_TL4 0x30
+#define LIVEII_PAD_TL5 0x2F
+#define LIVEII_PAD_TL6 0x2D
+#define LIVEII_PAD_TL7 0x2B
+#define LIVEII_PAD_TL8 0x28
+#define LIVEII_PAD_TL9 0x26
+#define LIVEII_PAD_TL10 0x2E
+#define LIVEII_PAD_TL11 0x2C
+#define LIVEII_PAD_TL12 0x25
+#define LIVEII_PAD_TL13 0x24
+#define LIVEII_PAD_TL14 0x2A
+#define LIVEII_PAD_TL15 0x52
+
+
 #endif
