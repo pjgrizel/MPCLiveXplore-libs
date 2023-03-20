@@ -75,16 +75,16 @@ static const uint8_t MPCToForceB[] = {
     FORCE_BT_MUTE_PAD1, FORCE_BT_MUTE_PAD2, FORCE_BT_MUTE_PAD3, FORCE_BT_MUTE_PAD4};
 
 static const uint8_t MPCToForceC[] = {
-    0, FORCE_BT_ASSIGN_A, FORCE_BT_ASSIGN_B, FORCE_BT_MASTER,
-    FORCE_BT_MUTE, FORCE_BT_SOLO, FORCE_BT_REC_ARM, FORCE_BT_CLIP_STOP,
-    FORCE_BT_MUTE_PAD5, FORCE_BT_MUTE_PAD6, FORCE_BT_MUTE_PAD7, FORCE_BT_MUTE_PAD8,
-    FORCE_BT_MUTE_PAD1, FORCE_BT_MUTE_PAD2, FORCE_BT_MUTE_PAD3, FORCE_BT_MUTE_PAD4};
+    0, FORCE_BT_UP, 0, 0,
+    FORCE_BT_LEFT, FORCE_BT_DOWN, FORCE_BT_RIGHT, 0,
+    FORCE_BT_COLUMN_PAD5, FORCE_BT_COLUMN_PAD6, FORCE_BT_COLUMN_PAD7, FORCE_BT_COLUMN_PAD8,
+    FORCE_BT_COLUMN_PAD1, FORCE_BT_COLUMN_PAD2, FORCE_BT_COLUMN_PAD3, FORCE_BT_COLUMN_PAD4};
 
 static const uint8_t MPCToForceD[] = {
-    0, FORCE_BT_ASSIGN_A, FORCE_BT_ASSIGN_B, FORCE_BT_MASTER,
-    FORCE_BT_MUTE, FORCE_BT_SOLO, FORCE_BT_REC_ARM, FORCE_BT_CLIP_STOP,
-    FORCE_BT_MUTE_PAD5, FORCE_BT_MUTE_PAD6, FORCE_BT_MUTE_PAD7, FORCE_BT_MUTE_PAD8,
-    FORCE_BT_MUTE_PAD1, FORCE_BT_MUTE_PAD2, FORCE_BT_MUTE_PAD3, FORCE_BT_MUTE_PAD4};
+    0, FORCE_BT_UP, 0, FORCE_BT_STOP_ALL,
+    FORCE_BT_LEFT, FORCE_BT_DOWN, FORCE_BT_RIGHT, 0,
+    FORCE_BT_LAUNCH_5, FORCE_BT_LAUNCH_6, FORCE_BT_LAUNCH_7, FORCE_BT_LAUNCH_8,
+    FORCE_BT_LAUNCH_1, FORCE_BT_LAUNCH_2, FORCE_BT_LAUNCH_3, FORCE_BT_LAUNCH_4};
 
 // Here we convert the Force pad number to MPC bank.
 static const uint8_t ForcePadNumberToMPCBank[] = {
@@ -281,27 +281,27 @@ void LoadMapping()
     // }
     for (int i = 0; i < 16; i++)
     {
-        MPCPadValuesA_A[i].r = 0x7F;
+        MPCPadValuesA_A[i].r = 0x00;
         MPCPadValuesA_A[i].g = 0x00;
         MPCPadValuesA_A[i].b = 0x00;
         MPCPadValuesA_B[i].r = 0x00;
-        MPCPadValuesA_B[i].g = 0x7F;
+        MPCPadValuesA_B[i].g = 0x00;
         MPCPadValuesA_B[i].b = 0x00;
         MPCPadValuesA_C[i].r = 0x00;
         MPCPadValuesA_C[i].g = 0x00;
-        MPCPadValuesA_C[i].b = 0x7F;
+        MPCPadValuesA_C[i].b = 0x00;
         MPCPadValuesA_D[i].r = 0x00;
         MPCPadValuesA_D[i].g = 0x00;
-        MPCPadValuesD[i].b = 0x7F;
+        MPCPadValuesD[i].b = 0x00;
         MPCPadValuesB[i].r = 0x00;
-        MPCPadValuesB[i].g = 0x7F;
+        MPCPadValuesB[i].g = 0x00;
         MPCPadValuesB[i].b = 0x00;
         MPCPadValuesC[i].r = 0x00;
         MPCPadValuesC[i].g = 0x00;
-        MPCPadValuesC[i].b = 0x7F;
+        MPCPadValuesC[i].b = 0x00;
         MPCPadValuesD[i].r = 0x00;
         MPCPadValuesD[i].g = 0x00;
-        MPCPadValuesD[i].b = 0x7F;
+        MPCPadValuesD[i].b = 0x00;
     }
 }
 
@@ -442,44 +442,138 @@ void MPCSwitchMatrix(uint8_t new_mode)
     }
 }
 
-void SetForceMatrixButton(uint8_t force_pad_note_number)
+void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
 {
-    // Little shortcut
-    if (force_pad_note_number == 0)
-        return;
+    // Set default colors for each button type
+    // XXX TODO: make this configurable
+    ForceMPCPadColor_t color_on;
+    ForceMPCPadColor_t color_off;
+    switch (force_pad_note_number)
+    {
+    // Blacked-out pads
+    case 0x00:
+        color_on.r = 0x3F;
+        color_on.g = 0x3F;
+        color_on.b = 0x3F;
+        color_off.r = 0x00;
+        color_off.g = 0x00;
+        color_off.b = 0x00;
+        break;
+
+    // Pads that are vivid orange
+    case FORCE_BT_ASSIGN_A:
+    case FORCE_BT_MUTE:
+    case FORCE_BT_MASTER:
+        color_on.r = 0x7F;
+        color_on.g = 0x7F;
+        color_on.b = 0x00;
+        color_off.r = 0x3F;
+        color_off.g = 0x3F;
+        color_off.b = 0x00;
+        break;
+
+    // Pads that are vivid red
+    case FORCE_BT_REC_ARM:
+    case FORCE_BT_ASSIGN_B:
+    case FORCE_BT_STOP_ALL:
+        color_on.r = 0x7F;
+        color_on.g = 0x00;
+        color_on.b = 0x00;
+        color_off.r = 0x3F;
+        color_off.g = 0x00;
+        color_off.b = 0x00;
+        break;
+
+    // Blue pads (yeah there are some of them)
+    case FORCE_BT_SOLO:
+        color_on.r = 0x00;
+        color_on.g = 0x00;
+        color_on.b = 0x7F;
+        color_off.r = 0x00;
+        color_off.g = 0x00;
+        color_off.b = 0x3F;
+        break;
+
+    // Pads that are vivid green
+    case FORCE_BT_CLIP_STOP:
+        color_on.r = 0x00;
+        color_on.g = 0x7F;
+        color_on.b = 0x00;
+        color_off.r = 0x00;
+        color_off.g = 0x3F;
+        color_off.b = 0x00;
+        break;
+
+    // Default color is white/gray
+    default:
+        color_on.r = 0x7F;
+        color_on.g = 0x7F;
+        color_on.b = 0x7F;
+        color_off.r = 0x3F;
+        color_off.g = 0x3F;
+        color_off.b = 0x3F;
+        break;
+    }
 
     // XXX SUBOPTIMAL we look into the whole arrays for the note
     // We don't bother looking into A_A matrices because it's not used for buttons
     // We look into each matrix becaue one button could be present several times!
-    for (u_int8_t i=0; i<16; i++)
+    for (u_int8_t i = 0; i < 16; i++)
     {
         if (MPCToForceB[i] == force_pad_note_number)
         {
-            tklog_debug("SetForceMatrixButton: %02x\n", force_pad_note_number);
+            tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
             tklog_debug("   -> found pad %02x in matrix B\n", i);
-            MPCPadValuesB[i].r = 0x7F;
-            MPCPadValuesB[i].g = 0x00;
-            MPCPadValuesB[i].b = 0x7F;
+            if (on)
+            {
+                MPCPadValuesB[i].r = color_on.r;
+                MPCPadValuesB[i].g = color_on.g;
+                MPCPadValuesB[i].b = color_on.b;
+            }
+            else
+            {
+                MPCPadValuesB[i].r = color_off.r;
+                MPCPadValuesB[i].g = color_off.g;
+                MPCPadValuesB[i].b = color_off.b;
+            }
             if (MPCPadMode == PAD_BANK_B)
                 DrawMatrixPadFromCache(PAD_BANK_B, i);
         }
         if (MPCToForceC[i] == force_pad_note_number)
         {
-            tklog_debug("SetForceMatrixButton: %02x\n", force_pad_note_number);
+            tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
             tklog_debug("   -> found pad %02x in matrix C\n", i);
-            MPCPadValuesC[i].r = 0x7F;
-            MPCPadValuesC[i].g = 0x00;
-            MPCPadValuesC[i].b = 0x7F;
+            if (on)
+            {
+                MPCPadValuesC[i].r = color_on.r;
+                MPCPadValuesC[i].g = color_on.g;
+                MPCPadValuesC[i].b = color_on.b;
+            }
+            else
+            {
+                MPCPadValuesC[i].r = color_off.r;
+                MPCPadValuesC[i].g = color_off.g;
+                MPCPadValuesC[i].b = color_off.b;
+            }
             if (MPCPadMode == PAD_BANK_C)
                 DrawMatrixPadFromCache(PAD_BANK_C, i);
         }
         if (MPCToForceD[i] == force_pad_note_number)
         {
-            tklog_debug("SetForceMatrixButton: %02x\n", force_pad_note_number);
+            tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
             tklog_debug("   -> found pad %02x in matrix D\n", i);
-            MPCPadValuesD[i].r = 0x7F;
-            MPCPadValuesD[i].g = 0x00;
-            MPCPadValuesD[i].b = 0x7F;
+            if (on)
+            {
+                MPCPadValuesD[i].r = color_on.r;
+                MPCPadValuesD[i].g = color_on.g;
+                MPCPadValuesD[i].b = color_on.b;
+            }
+            else
+            {
+                MPCPadValuesD[i].r = color_off.r;
+                MPCPadValuesD[i].g = color_off.g;
+                MPCPadValuesD[i].b = color_off.b;
+            }
             if (MPCPadMode == PAD_BANK_D)
                 DrawMatrixPadFromCache(PAD_BANK_D, i);
         }
@@ -824,7 +918,6 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             {
             case PAD_BANK_A_A:
                 myBuff[i + 1] = MPCToForceA_A[pad_number];
-                // 0x36 + pad_number; // XXX Proper pad mapping to do
                 break;
             case PAD_BANK_A_B:
                 myBuff[i + 1] = MPCToForceA_B[pad_number];
@@ -863,8 +956,8 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 }
             }
 
-            // Should not be here
-            PrepareFakeMidiMsg(&myBuff[i]);
+            // // Propagate message
+            // PrepareFakeMidiMsg(&myBuff[i]);
         }
         i += 3;
     }
@@ -929,8 +1022,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                     padF,
                     myBuff[i + 1],
                     myBuff[i + 2],
-                    myBuff[i + 3]
-                );
+                    myBuff[i + 3]);
 
                 // Update the pad# in the midi buffer
                 // XXX Why would I do that?
@@ -956,7 +1048,10 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             i += 3;
 
             // Complex remapping (from Force *NOTE NUMBER* to pad)
-            SetForceMatrixButton(myBuff[i + 1]);
+            if (myBuff[i + 2] == 0x7F)
+                SetForceMatrixButton(myBuff[i + 1], true);
+            else
+                SetForceMatrixButton(myBuff[i + 1], false);
         }
 
         else
