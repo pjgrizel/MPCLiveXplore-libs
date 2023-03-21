@@ -255,6 +255,8 @@ extern int MPCSpoofedID;
 // Faked functions
 extern typeof(&snd_rawmidi_read) orig_snd_rawmidi_read;
 extern typeof(&snd_rawmidi_write) orig_snd_rawmidi_write;
+extern typeof(&open64) orig_open64;
+extern typeof(&close) orig_close;
 
 // Debug stuff
 enum

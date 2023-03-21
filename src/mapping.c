@@ -88,43 +88,7 @@ static const uint8_t MPCToForceD[] = {
 
 // Here we convert the Force pad number to MPC bank.
 static const uint8_t ForcePadNumberToMPCBank[] = {
-    // Line 0
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    // Line 1
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    // Line 2
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    // Line 3
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    // Line 4
+    // Line
     PAD_BANK_A_C,
     PAD_BANK_A_C,
     PAD_BANK_A_C,
@@ -133,7 +97,7 @@ static const uint8_t ForcePadNumberToMPCBank[] = {
     PAD_BANK_A_D,
     PAD_BANK_A_D,
     PAD_BANK_A_D,
-    // Line 5
+    // Line
     PAD_BANK_A_C,
     PAD_BANK_A_C,
     PAD_BANK_A_C,
@@ -142,7 +106,7 @@ static const uint8_t ForcePadNumberToMPCBank[] = {
     PAD_BANK_A_D,
     PAD_BANK_A_D,
     PAD_BANK_A_D,
-    // Line 6
+    // Line
     PAD_BANK_A_C,
     PAD_BANK_A_C,
     PAD_BANK_A_C,
@@ -151,7 +115,7 @@ static const uint8_t ForcePadNumberToMPCBank[] = {
     PAD_BANK_A_D,
     PAD_BANK_A_D,
     PAD_BANK_A_D,
-    // Line 7
+    // Line
     PAD_BANK_A_C,
     PAD_BANK_A_C,
     PAD_BANK_A_C,
@@ -160,6 +124,42 @@ static const uint8_t ForcePadNumberToMPCBank[] = {
     PAD_BANK_A_D,
     PAD_BANK_A_D,
     PAD_BANK_A_D,
+    // Line
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    // Line
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    // Line
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    // Line
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_A,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
+    PAD_BANK_A_B,
     // Line 9 (mute modes)
     PAD_BANK_B,
     PAD_BANK_B,
@@ -220,6 +220,10 @@ static ForceMPCPadColor_t MPCPadValuesA_D[16];
 static ForceMPCPadColor_t MPCPadValuesB[16];
 static ForceMPCPadColor_t MPCPadValuesC[16];
 static ForceMPCPadColor_t MPCPadValuesD[16];
+
+// We keep the TAP value here to allow for a synchronized 'flash' effect
+// when battery is charging
+static bool TapStatus = false;
 
 ///////////////////////////////////////////////////////////////////////////////
 // (fake) load mapping tables from config file
@@ -387,9 +391,9 @@ void MPCSwitchMatrix(uint8_t new_mode)
 {
     tklog_debug("Switching to mode %02x (from current mode: %02x)\n", new_mode, MPCPadMode);
 
-    // Are we actually changing mode??? If not, just return
-    if (new_mode == MPCPadMode)
-        return;
+    // // Are we actually changing mode??? If not, just return
+    // if (new_mode == MPCPadMode)
+    //     return;
 
     // Reset all "PAD BANK" buttons
     uint8_t bt_bank_a[] = {0xB0, BANK_A, BUTTON_COLOR_OFF};
@@ -716,42 +720,42 @@ void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint
 // from 0 (top left) to 15 (bottom right)
 uint8_t getMpcPadNumber(uint8_t note_number)
 {
-    switch(note_number)
+    switch (note_number)
     {
-        case LIVEII_PAD_TL0:
-            return 0;
-        case LIVEII_PAD_TL1:
-            return 1;
-        case LIVEII_PAD_TL2:
-            return 2;
-        case LIVEII_PAD_TL3:
-            return 3;
-        case LIVEII_PAD_TL4:
-            return 4;
-        case LIVEII_PAD_TL5:
-            return 5;
-        case LIVEII_PAD_TL6:
-            return 6;
-        case LIVEII_PAD_TL7:
-            return 7;
-        case LIVEII_PAD_TL8:
-            return 8;
-        case LIVEII_PAD_TL9:
-            return 9;
-        case LIVEII_PAD_TL10:
-            return 10;
-        case LIVEII_PAD_TL11:
-            return 11;
-        case LIVEII_PAD_TL12:
-            return 12;
-        case LIVEII_PAD_TL13:
-            return 13;
-        case LIVEII_PAD_TL14:
-            return 14;
-        case LIVEII_PAD_TL15:
-            return 15;
-        default:
-            return 0;
+    case LIVEII_PAD_TL0:
+        return 0;
+    case LIVEII_PAD_TL1:
+        return 1;
+    case LIVEII_PAD_TL2:
+        return 2;
+    case LIVEII_PAD_TL3:
+        return 3;
+    case LIVEII_PAD_TL4:
+        return 4;
+    case LIVEII_PAD_TL5:
+        return 5;
+    case LIVEII_PAD_TL6:
+        return 6;
+    case LIVEII_PAD_TL7:
+        return 7;
+    case LIVEII_PAD_TL8:
+        return 8;
+    case LIVEII_PAD_TL9:
+        return 9;
+    case LIVEII_PAD_TL10:
+        return 10;
+    case LIVEII_PAD_TL11:
+        return 11;
+    case LIVEII_PAD_TL12:
+        return 12;
+    case LIVEII_PAD_TL13:
+        return 13;
+    case LIVEII_PAD_TL14:
+        return 14;
+    case LIVEII_PAD_TL15:
+        return 15;
+    default:
+        return 0;
     }
 }
 
@@ -1079,15 +1083,22 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         // Check if we must remap...
         else if (myBuff[i] == 0xB0)
         {
-            if (myBuff[i+1] != 0x35)
+            if (myBuff[i + 1] != 0x35)
                 tklog_debug("App wants to write to the Force button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+
+            // Very specific TAP button treatment
+            if (myBuff[i + 1] == FORCE_BT_TAP_TEMPO)
+            {
+                TapStatus = myBuff[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
+                displayBatteryStatus();
+            }
 
             // Simple remapping
             if (map_ButtonsLeds_Inv[myBuff[i + 1]] >= 0)
             {
                 // tklog_debug("MAP INV %d->%d\n",myBuff[i+1],map_ButtonsLeds_Inv[ myBuff[i+1] ]);
                 myBuff[i + 1] = map_ButtonsLeds_Inv[myBuff[i + 1]];
-                if (myBuff[i+1] != 0x35)
+                if (myBuff[i + 1] != 0x35)
                     tklog_debug("...remapped to button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
             }
             else
@@ -1107,4 +1118,101 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         else
             i++;
     }
+}
+
+// Lightbulb, anyone?
+// This is triggered every time we update the "TAP" button!
+void displayBatteryStatus()
+{
+    // We start by opening the capacity file
+    int fd;
+    int battery_;
+    bool is_charging = false;
+    uint8_t blink = 0;
+    char buffer[16];
+    char intBuffer[4];
+    ssize_t bytesRead;
+    uint8_t scale;
+
+    // Read battery_ value from fp capacity
+    // Convert the string to an integer
+    fd = orig_open64(POWER_SUPPLY_CAPACITY_PATH, O_RDONLY);
+    bytesRead = read(fd, buffer, 6);
+    orig_close(fd);
+    memcpy(intBuffer, buffer, 3);
+    intBuffer[bytesRead] = '\0';
+    battery_ = atoi(intBuffer);
+    scale = battery_ * 8 / 100;
+
+    // Read battery status from POWER_SUPPLY_STATUS_PATH
+    // If it's "Charging", we display a charging icon (kind of)
+    if (battery_ != 100)
+    {
+        fd = orig_open64(POWER_SUPPLY_STATUS_PATH, O_RDONLY);
+        bytesRead = read(fd, buffer, 9);
+        orig_close(fd);
+        buffer[bytesRead] = '\0';
+        if (strcmp(buffer, "Charging\n") == 0)
+            is_charging = true;
+    }
+
+    // If battery is currently charging, we make the last light blink
+    // by decreasing the scale by 1
+    if (is_charging && !TapStatus && scale > 0)
+        blink = 1;
+
+    // Reset lights
+    uint8_t light_1[] = {0xB0, 0x5A, 0x00};
+    uint8_t light_2[] = {0xB0, 0x5B, 0x00};
+    uint8_t light_3[] = {0xB0, 0x5C, 0x00};
+    uint8_t light_4[] = {0xB0, 0x5D, 0x00};
+
+    // Handle 'current' light
+    switch(scale)
+    {
+        case 0:
+            break;
+        case 1:
+            light_1[2] = 0x01 - blink;
+            break;
+        case 2:
+            light_1[2] = 0x02 - blink;
+            break;
+        case 3:
+            light_1[2] = 0x01;
+            light_2[2] = 0x01 - blink;
+            break;
+        case 4:
+            light_1[2] = 0x01;
+            light_2[2] = 0x02 - blink;
+            break;
+        case 5:
+            light_1[2] = 0x01;
+            light_2[2] = 0x01;
+            light_3[2] = 0x01 - blink;
+            break;
+        case 6:
+            light_1[2] = 0x01;
+            light_2[2] = 0x01;
+            light_3[2] = 0x02 - blink;
+            break;
+        case 7:
+            light_1[2] = 0x01;
+            light_2[2] = 0x01;
+            light_3[2] = 0x01;
+            light_4[2] = 0x01 - blink;
+            break;
+        case 8:
+            light_1[2] = 0x01;
+            light_2[2] = 0x01;
+            light_3[2] = 0x01;
+            light_4[2] = 0x02 - blink;
+            break;
+    }
+
+    // Let's write it to the private ports
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_2, sizeof(light_2));
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_3, sizeof(light_3));
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_4, sizeof(light_4));
 }

@@ -163,21 +163,14 @@ static typeof(&snd_seq_close) orig_snd_seq_close;
 static typeof(&snd_seq_port_info_set_name) orig_snd_seq_port_info_set_name;
 typeof(&snd_rawmidi_read) orig_snd_rawmidi_read;
 typeof(&snd_rawmidi_write) orig_snd_rawmidi_write;
+typeof(&open64) orig_open64;
+typeof(&close) orig_close;
 // static typeof(&snd_seq_event_input) orig_snd_seq_event_input;
 
 // Globals used to rename a virtual port and get the client id.  No other way...
 static int snd_seq_virtual_port_rename_flag = 0;
 static char snd_seq_virtual_port_newname[30];
 static int snd_seq_virtual_port_clientid = -1;
-
-// Other more generic APIs
-static typeof(&open64) orig_open64;
-// static typeof(&read) orig_read;
-// static typeof(&open) orig_open;
-static typeof(&close) orig_close;
-
-// Our timer to update battery status every 60 seconds
-static time_t lastLightBulbUpdate;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Match string against a regular expression
@@ -438,72 +431,6 @@ void ShowHelp(void)
     exit(0);
 }
 
-// Lightbulb, anyone?
-static void displayBatteryStatus()
-{
-    // We start by opening the capacity file
-    int fd;
-    int battery_;
-    char buffer[6];
-    char intBuffer[4];
-    ssize_t bytesRead;
-    int scale;
-    fd = orig_open64(POWER_SUPPLY_CAPACITY_PATH, O_RDONLY);
-
-    // Read battery_ value from fp
-    // Convert the string to an integer
-    bytesRead = read(fd, buffer, 6);
-    orig_close(fd);
-    memcpy(intBuffer, buffer, 3);
-    intBuffer[bytesRead] = '\0';
-    battery_ = atoi(intBuffer);
-    scale = battery_ * 8 / 100;
-    uint8_t light_1[] = {0xB0, 0x5A, 0x00};
-    uint8_t light_2[] = {0xB0, 0x5B, 0x00};
-    uint8_t light_3[] = {0xB0, 0x5C, 0x00};
-    uint8_t light_4[] = {0xB0, 0x5D, 0x00};
-    if (scale > 0)
-    {
-        light_1[2] = 0x01;
-    }
-    if (scale > 2)
-    {
-        light_2[2] = 0x01;
-    }
-    if (scale > 4)
-    {
-        light_3[2] = 0x01;
-    }
-    if (scale > 6)
-    {
-        light_4[2] = 0x01;
-    }
-    if (scale == 2)
-    {
-        light_1[2] = 0x02;
-    }
-    if (scale == 4)
-    {
-        light_2[2] = 0x02;
-    }
-    if (scale == 6)
-    {
-        light_3[2] = 0x02;
-    }
-    if (scale == 8)
-    {
-        light_4[2] = 0x02;
-    }
-
-    tklog_debug("Battery: %d%% (%d/8)\n", battery_, scale);
-
-    // Let's write it to the private ports
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_2, sizeof(light_2));
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_3, sizeof(light_3));
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_4, sizeof(light_4));
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Setup tkgl anyctrl
 ///////////////////////////////////////////////////////////////////////////////
@@ -639,8 +566,8 @@ static void tkgl_init()
         // snd_rawmidi_open(&read_handle, &write_handle, "virtual", 0);
     }
 
-    // Show battery status
-    displayBatteryStatus();
+    // // Show battery status
+    // displayBatteryStatus();
 
     // Show 'PJ' on the pads!
     /*
@@ -667,10 +594,6 @@ static void tkgl_init()
     SetPadColorFromColorInt(3, 2, COLOR_PINK);
     SetPadColorFromColorInt(3, 3, COLOR_PINK);
     tklog_info("DONE...\n");
-
-    // Show "BANK A" mode
-    uint8_t bt_bank_a[] = {0xB0, BANK_D, BUTTON_COLOR_RED};
-    orig_snd_rawmidi_write(rawvirt_outpriv, bt_bank_a, sizeof(bt_bank_a));
 
     fflush(stdout);
 }
@@ -1022,13 +945,6 @@ ssize_t snd_rawmidi_write(snd_rawmidi_t *rawmidi, const void *buffer, size_t siz
     }
 
     // Every 60 seconds, we display the battery status
-    // XXX TODO: Move this to the "tap tempo" section
-    if (time(NULL) - lastLightBulbUpdate > 60)
-    {
-        lastLightBulbUpdate = time(NULL);
-        displayBatteryStatus();
-    }
-
     if (rawMidiDumpPostFlag)
         RawMidiDump(rawmidi, 'o', 'w', buffer, size);
 

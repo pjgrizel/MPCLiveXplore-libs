@@ -13,6 +13,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
 
 extern void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint32_t rgbColorValue);
 extern void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b);
+extern void displayBatteryStatus();
 
 // Pads Color cache captured from sysex events
 typedef struct
