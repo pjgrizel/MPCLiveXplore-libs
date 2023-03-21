@@ -14,6 +14,11 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
 extern void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint32_t rgbColorValue);
 extern void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b);
 extern void displayBatteryStatus();
+extern void MPCSwitchMatrix(uint8_t new_mode);
+
+// Press mode delay in ms. If we keep pressing for more than this time,
+// consider this mode as a temporary toggle
+#define DOUBLE_CLICK_DELAY 1000
 
 // Pads Color cache captured from sysex events
 typedef struct

@@ -37,10 +37,12 @@ int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
 // SHIFT Holded mode
 // Holding shift will activate the shift mode
 static bool shiftHoldMode = false;
-static bool bankAHoldMode = false;
 
 // To navigate in matrix when MPC spoofing a Force
-static int MPCPadMode = PAD_BANK_A_A;
+static uint8_t MPCPadMode = PAD_BANK_A_A;
+static uint8_t MPCPadModeBankA = PAD_BANK_A_A;
+static uint8_t RestBankMode = PAD_BANK_A_A;
+static uint8_t last_key = 0;
 
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
@@ -225,6 +227,10 @@ static ForceMPCPadColor_t MPCPadValuesD[16];
 // when battery is charging
 static bool TapStatus = false;
 
+// Create a button press timer: we keep track of how long a BANK button was pressed
+// and if it was pressed for more than 1 second, we switch to the next bank
+static struct timespec started_press;
+
 ///////////////////////////////////////////////////////////////////////////////
 // (fake) load mapping tables from config file
 ///////////////////////////////////////////////////////////////////////////////
@@ -307,6 +313,9 @@ void LoadMapping()
         MPCPadValuesD[i].g = 0x00;
         MPCPadValuesD[i].b = 0x00;
     }
+
+    // Initialize timer
+    clock_gettime(CLOCK_MONOTONIC_RAW, &started_press);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -382,18 +391,107 @@ void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
     }
 }
 
+// //////////////////////////////////////////////////////////////////
+// Bank buttons management
+// //////////////////////////////////////////////////////////////////
+void MPCSwitchBankMode(uint8_t bank_button, bool pressed)
+{
+    struct timespec now;
+    uint8_t new_mode;
+
+    // Ok we keep in mind a few things.
+    // MPCPadMode is the *current* mode we're in (ie what's displayed)
+    // bank_button is the button that was pressed.
+    // pressed is a boolean that tells us if the button was pressed or released.
+    // BankALayerMode is the current layer mode for bank A (maybe not displayed)
+    // RestBankMode is the bank mode "at rest", ie when not button is pressed.
+    // Let's go.
+
+    // If we *press* a button, we activate the mode immediately,
+    // but we'll keep the underlying mode in RestBankMode
+    clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+    if (pressed)
+    {
+        // Is it a double click?
+        uint64_t duration = (now.tv_sec - started_press.tv_sec) * 1000 + (now.tv_nsec - started_press.tv_nsec) / 1000000;
+
+        // Immediately switch to the new matrix.
+        if (bank_button == LIVEII_BT_BANK_A)
+        {
+            new_mode = MPCPadModeBankA;
+            RestBankMode = MPCPadModeBankA;
+        }
+        else if (bank_button == LIVEII_BT_BANK_B)
+            new_mode = PAD_BANK_B;
+        else if (bank_button == LIVEII_BT_BANK_C)
+            new_mode = PAD_BANK_C;
+        else if (bank_button == LIVEII_BT_BANK_D)
+            new_mode = PAD_BANK_D;
+
+        // Actually switch
+        MPCSwitchMatrix(new_mode);
+
+        // If we used shift, we consider these are the new rest modes
+        if (shiftHoldMode && MPCPadMode >= PAD_BANK_B)
+        {
+            RestBankMode = MPCPadMode;
+        }
+
+        // If we used double-click, considere this is now the rest mode
+        if (last_key == bank_button && duration < DOUBLE_CLICK_DELAY && MPCPadMode >= PAD_BANK_B)
+        {
+            tklog_debug("Double click: %d ms\n", duration);
+            RestBankMode = MPCPadMode;
+        }
+
+        // Keep track of the last key and current time
+        last_key = bank_button;
+        clock_gettime(CLOCK_MONOTONIC_RAW, &started_press);
+    }
+    else
+    {
+        // We just released the button.
+        // 1- if button is 'locked' (ie. rest mode >= BANK_B), we keep in there.
+        // 2- if button is not locked, we want to change banks A_x
+        if (RestBankMode >= PAD_BANK_B)
+            MPCSwitchMatrix(RestBankMode);
+        else
+        {
+            // XXX Did we release it BEFORE the double click delay?
+            switch (bank_button)
+            {
+            case LIVEII_BT_BANK_A:
+                new_mode = PAD_BANK_A_A;
+                break;
+            case LIVEII_BT_BANK_B:
+                new_mode = PAD_BANK_A_B;
+                break;
+            case LIVEII_BT_BANK_C:
+                new_mode = PAD_BANK_A_C;
+                break;
+            case LIVEII_BT_BANK_D:
+                new_mode = PAD_BANK_A_D;
+                break;
+            }
+
+            // New rest mode becomes current mode: we "validate" previous press
+            MPCSwitchMatrix(new_mode);
+            if (new_mode < PAD_BANK_B)
+            {
+                MPCPadModeBankA = new_mode;
+                RestBankMode = MPCPadMode;
+            }
+        }
+    }
+}
+
 ////////
 // Completely redraw the pads according to the mode we're in.
 // Also take care of the "PAD BANK" button according to the proper mode
-// XXX TODO: rename this into "switch mode" and handle button lights more sparsingly
 ////////
 void MPCSwitchMatrix(uint8_t new_mode)
 {
     tklog_debug("Switching to mode %02x (from current mode: %02x)\n", new_mode, MPCPadMode);
-
-    // // Are we actually changing mode??? If not, just return
-    // if (new_mode == MPCPadMode)
-    //     return;
 
     // Reset all "PAD BANK" buttons
     uint8_t bt_bank_a[] = {0xB0, BANK_A, BUTTON_COLOR_OFF};
@@ -437,12 +535,15 @@ void MPCSwitchMatrix(uint8_t new_mode)
     orig_snd_rawmidi_write(rawvirt_outpriv, bt_bank_d, sizeof(bt_bank_d));
 
     // Save the new mode
-    MPCPadMode = new_mode;
 
-    // Actually draw pads
-    for (int c = 0; c < 16; c++)
+    // Actually draw pads IF WE REALLY CHANGED MODES
+    if (new_mode != MPCPadMode)
     {
-        DrawMatrixPadFromCache(new_mode, c);
+        MPCPadMode = new_mode;
+        for (int c = 0; c < 16; c++)
+        {
+            DrawMatrixPadFromCache(new_mode, c);
+        }
     }
 }
 
@@ -500,6 +601,14 @@ void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
 
     // Pads that are vivid green
     case FORCE_BT_CLIP_STOP:
+    case FORCE_BT_LAUNCH_1:
+    case FORCE_BT_LAUNCH_2:
+    case FORCE_BT_LAUNCH_3:
+    case FORCE_BT_LAUNCH_4:
+    case FORCE_BT_LAUNCH_5:
+    case FORCE_BT_LAUNCH_6:
+    case FORCE_BT_LAUNCH_7:
+    case FORCE_BT_LAUNCH_8:
         color_on.r = 0x00;
         color_on.g = 0x7F;
         color_on.b = 0x00;
@@ -805,105 +914,34 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             // SHIFT pressed/released (nb the SHIFT button can't be mapped)
             // Double click on SHIFT is not managed at all. Avoid it.
             // NOTA: SHIFT IS NOW ONLY USED FOR QLINK KNOBS
-            // if (myBuff[i + 1] == SHIFT_KEY_VALUE)
-            // {
-            //     shiftHoldMode = (myBuff[i + 2] == 0x7F ? true : false);
-            //     // Kill the shift  event because we want to manage this here and not let
-            //     // the MPC app to know that shift is pressed
-            //     // PrepareFakeMidiMsg(&myBuff[i]);
-            //     i += 3;
-            //     continue; // next msg
-            // }
+            if (myBuff[i + 1] == SHIFT_KEY_VALUE)
+            {
+                // We keep track of the shift mode, but we propagate the shift event to the Force
+                shiftHoldMode = (myBuff[i + 2] == 0x7F ? true : false);
+            }
 
             // Select bank mode.
             // Here we use BankA button as a pseudo-shift.
             // In any case if we're manipulating BANK buttons, we kill the event.
-            bool layerBanksBCD = bankAHoldMode || (MPCPadMode == PAD_BANK_B) || (MPCPadMode == PAD_BANK_C) || (MPCPadMode == PAD_BANK_D);
-            if (myBuff[i + 1] == LIVEII_BT_BANK_A)
+            switch (myBuff[i + 1])
             {
-                if (myBuff[i + 2] == 0x7F)
-                {
-                    // Bank mode is activated
-                    bankAHoldMode = true;
-                    MPCSwitchMatrix(PAD_BANK_A_A);
-                }
-                else
-                {
-                    bankAHoldMode = false;
-                }
+            case LIVEII_BT_BANK_A:
+            case LIVEII_BT_BANK_B:
+            case LIVEII_BT_BANK_C:
+            case LIVEII_BT_BANK_D:
+                // Consider switching modes
+                MPCSwitchBankMode(myBuff[i + 1], myBuff[i + 2] == 0x7F ? true : false);
 
-                // Kill the event, ignore the rest
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                continue;
-            }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_B) && layerBanksBCD == false)
-            {
-                if (myBuff[i + 2] == 0x7F)
-                    MPCSwitchMatrix(PAD_BANK_A_B);
-
-                // Kill the event, ignore the rest
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                continue;
-            }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_C) && layerBanksBCD == false)
-            {
-                if (myBuff[i + 2] == 0x7F)
-                    MPCSwitchMatrix(PAD_BANK_A_C);
-
-                // Kill the event, ignore the rest
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                continue;
-            }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_D) && layerBanksBCD == false)
-            {
-                if (myBuff[i + 2] == 0x7F)
-                    MPCSwitchMatrix(PAD_BANK_A_D);
-
-                // Kill the event, ignore the rest
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                continue;
-            }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_B) && layerBanksBCD == true)
-            {
-                if (myBuff[i + 2] == 0x7F)
-                    MPCSwitchMatrix(PAD_BANK_B);
-
-                // Kill the event, ignore the rest
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                continue;
-            }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_C) && layerBanksBCD == true)
-            {
-                if (myBuff[i + 2] == 0x7F)
-                    MPCSwitchMatrix(PAD_BANK_C);
-
-                // Kill the event, ignore the rest
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                continue;
-            }
-            else if ((myBuff[i + 1] == LIVEII_BT_BANK_D) && layerBanksBCD == true)
-            {
-                if (myBuff[i + 2] == 0x7F)
-                    MPCSwitchMatrix(PAD_BANK_D);
-
-                // Kill the event, ignore the rest
+                // Kill the message, ignore the rest
                 PrepareFakeMidiMsg(&myBuff[i]);
                 i += 3;
                 continue;
             }
 
-            // tklog_debug("Shift + key mode is %s \n",shiftHoldMode ? "active":"inactive");
-
-            // Exception : Qlink management is hard coded
+            // Qlink management is hard coded
             // SHIFT "KNOB TOUCH" button :  add the offset when possible
             // MPC : 90 [54-63] 7F      FORCE : 90 [53-5A] 7F  (no "untouch" exists)
-            else if (myBuff[i + 1] >= 0x54 && myBuff[i + 1] <= 0x63)
+            if (myBuff[i + 1] >= 0x54 && myBuff[i + 1] <= 0x63)
             {
                 myBuff[i + 1]--; // Map to force Qlink touch
 
@@ -1031,7 +1069,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         if (myBuff[i] == 0xF0 && memcmp(&myBuff[i], AkaiSysex, sizeof(AkaiSysex)) == 0)
         {
             // Update the sysex id in the sysex for our original hardware
-            tklog_debug("Inside Akai Sysex\n");
+            // tklog_debug("Inside Akai Sysex\n");
             i += sizeof(AkaiSysex);
             myBuff[i] = DeviceInfoBloc[MPCOriginalId].sysexId;
             i++;
@@ -1045,7 +1083,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 
                 // Regular Pad
                 uint8_t padF = myBuff[i];
-                tklog_debug("Inside Pad Color Sysex for pad %02x\n", padF);
+                tklog_debug("  [write] Inside Pad Color Sysex for pad %02x\n", padF);
                 // uint8_t padL = padF / 8;
                 // uint8_t padC = padF % 8;
                 // uint8_t padM = 0x7F;
@@ -1129,6 +1167,7 @@ void displayBatteryStatus()
     int battery_;
     bool is_charging = false;
     uint8_t blink = 0;
+    uint8_t other_leds = 0x01;
     char buffer[16];
     char intBuffer[4];
     ssize_t bytesRead;
@@ -1146,14 +1185,19 @@ void displayBatteryStatus()
 
     // Read battery status from POWER_SUPPLY_STATUS_PATH
     // If it's "Charging", we display a charging icon (kind of)
-    if (battery_ != 100)
+    fd = orig_open64(POWER_SUPPLY_STATUS_PATH, O_RDONLY);
+    bytesRead = read(fd, buffer, 9);
+    orig_close(fd);
+    buffer[bytesRead] = '\0';
+    if (strcmp(buffer, "Charging\n") == 0)
     {
-        fd = orig_open64(POWER_SUPPLY_STATUS_PATH, O_RDONLY);
-        bytesRead = read(fd, buffer, 9);
-        orig_close(fd);
-        buffer[bytesRead] = '\0';
-        if (strcmp(buffer, "Charging\n") == 0)
-            is_charging = true;
+        is_charging = true;
+        other_leds = 0x02;
+    }
+    else if (strcmp(buffer, "Full\n") == 0)
+    {
+        is_charging = false;
+        other_leds = 0x02;
     }
 
     // If battery is currently charging, we make the last light blink
@@ -1168,46 +1212,46 @@ void displayBatteryStatus()
     uint8_t light_4[] = {0xB0, 0x5D, 0x00};
 
     // Handle 'current' light
-    switch(scale)
+    switch (scale)
     {
-        case 0:
-            break;
-        case 1:
-            light_1[2] = 0x01 - blink;
-            break;
-        case 2:
-            light_1[2] = 0x02 - blink;
-            break;
-        case 3:
-            light_1[2] = 0x01;
-            light_2[2] = 0x01 - blink;
-            break;
-        case 4:
-            light_1[2] = 0x01;
-            light_2[2] = 0x02 - blink;
-            break;
-        case 5:
-            light_1[2] = 0x01;
-            light_2[2] = 0x01;
-            light_3[2] = 0x01 - blink;
-            break;
-        case 6:
-            light_1[2] = 0x01;
-            light_2[2] = 0x01;
-            light_3[2] = 0x02 - blink;
-            break;
-        case 7:
-            light_1[2] = 0x01;
-            light_2[2] = 0x01;
-            light_3[2] = 0x01;
-            light_4[2] = 0x01 - blink;
-            break;
-        case 8:
-            light_1[2] = 0x01;
-            light_2[2] = 0x01;
-            light_3[2] = 0x01;
-            light_4[2] = 0x02 - blink;
-            break;
+    case 0:
+        break;
+    case 1:
+        light_1[2] = 0x01 - blink;
+        break;
+    case 2:
+        light_1[2] = 0x02 - blink;
+        break;
+    case 3:
+        light_1[2] = other_leds;
+        light_2[2] = 0x01 - blink;
+        break;
+    case 4:
+        light_1[2] = other_leds;
+        light_2[2] = 0x02 - blink;
+        break;
+    case 5:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = 0x01 - blink;
+        break;
+    case 6:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = 0x02 - blink;
+        break;
+    case 7:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = other_leds;
+        light_4[2] = 0x01 - blink;
+        break;
+    case 8:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = other_leds;
+        light_4[2] = 0x02 - blink;
+        break;
     }
 
     // Let's write it to the private ports
