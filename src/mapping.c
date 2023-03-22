@@ -34,14 +34,19 @@ int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
 // static ForceMPCPadColor_t PadSysexColorsCacheBankC[16];
 // static ForceMPCPadColor_t PadSysexColorsCacheBankD[16];
 
-// SHIFT Holded mode
+// Project init?
+static bool project_loaded = false;
+
+// SHIFT Hold mode
 // Holding shift will activate the shift mode
 static bool shiftHoldMode = false;
 
 // To navigate in matrix when MPC spoofing a Force
 static uint8_t MPCPadMode = PAD_BANK_A;
-static uint8_t RestBanksMask = PAD_BANK_A | PAD_BANK_F;
-static uint8_t LastPressedBankButton = 0;
+static uint8_t RestBanksMask = PAD_BANK_A;
+static uint8_t RestBankABCD = PAD_BANK_A;
+static uint8_t LastKeyDownBankButton = 0;
+static uint8_t DownBankMask = 0; // Buttons that are currently down
 
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
@@ -209,9 +214,9 @@ static ForceMPCPadColor_t MPCPadValuesH[16];
 // when battery is charging
 static bool TapStatus = false;
 
-// Create a button press timer: we keep track of how long a BANK button was pressed
-// and if it was pressed for more than 1 second, we switch to the next bank
-static struct timespec started_press;
+// Create a button press timer: we keep track of how long a BANK button was key_down
+// and if it was key_down for more than 1 second, we switch to the next bank
+static struct timespec started_down;
 
 ///////////////////////////////////////////////////////////////////////////////
 // (fake) load mapping tables from config file
@@ -297,7 +302,7 @@ void LoadMapping()
     }
 
     // Initialize timer
-    clock_gettime(CLOCK_MONOTONIC_RAW, &started_press);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &started_down);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -376,99 +381,138 @@ void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
 // //////////////////////////////////////////////////////////////////
 // Bank buttons management
 // //////////////////////////////////////////////////////////////////
-void MPCSwitchBankMode(uint8_t bank_button, bool pressed)
+void MPCSwitchBankMode(uint8_t bank_button, bool key_down)
 {
     struct timespec now;
-    uint8_t asked_bank_mask;
-    uint64_t press_duration;
-    bool is_click = false;        // press -> release in less than 0.5s
-    bool is_double_click = false; // press -> release -> press -> release in less than 0.5s
+    uint8_t selected_bank_mask;
+    uint64_t down_duration;
+    bool is_click = false;        // down -> up in less than 0.5s
+    bool is_double_click = false; // down -> up -> down in less than 0.5s
     uint8_t current_bank_layer_mask = (MPCPadMode & 0x0f) ? PAD_BANK_ABCD : PAD_BANK_EFGH;
+    uint8_t rest_bank_layer_mask = (RestBanksMask & 0x0f) ? PAD_BANK_ABCD : PAD_BANK_EFGH;
 
     // Convert bank_button to bank_pad
     switch (bank_button)
     {
     case LIVEII_BT_BANK_A:
-        asked_bank_mask = PAD_BANK_A | PAD_BANK_E;
+        selected_bank_mask = PAD_BANK_A | PAD_BANK_E;
         break;
     case LIVEII_BT_BANK_B:
-        asked_bank_mask = PAD_BANK_B | PAD_BANK_F;
+        selected_bank_mask = PAD_BANK_B | PAD_BANK_F;
         break;
     case LIVEII_BT_BANK_C:
-        asked_bank_mask = PAD_BANK_C | PAD_BANK_G;
+        selected_bank_mask = PAD_BANK_C | PAD_BANK_G;
         break;
     case LIVEII_BT_BANK_D:
-        asked_bank_mask = PAD_BANK_D | PAD_BANK_H;
+        selected_bank_mask = PAD_BANK_D | PAD_BANK_H;
         break;
     }
 
     // Handle click / hold / doubleclick stuff
     clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-    if (LastPressedBankButton == bank_button)
+    if (LastKeyDownBankButton == bank_button)
     {
-        press_duration = (now.tv_sec - started_press.tv_sec) * 1000 + (now.tv_nsec - started_press.tv_nsec) / 1000000;
-        if (pressed)
+        down_duration = (now.tv_sec - started_down.tv_sec) * 1000 + (now.tv_nsec - started_down.tv_nsec) / 1000000;
+        if (key_down)
         {
-            if (press_duration < DOUBLE_CLICK_DELAY)
+            if (down_duration < DOUBLE_CLICK_DELAY)
             {
                 is_double_click = true;
-                started_press.tv_sec = 0; // Avoid mixing double clicks and click at release
+                started_down.tv_sec = 0; // Avoid mixing double clicks and click at release
             }
         }
         else
         {
-            if (press_duration < HOLD_DELAY)
+            if (down_duration < HOLD_DELAY)
                 is_click = true;
         }
     }
-    LastPressedBankButton = bank_button;
-    if (pressed)
-        clock_gettime(CLOCK_MONOTONIC_RAW, &started_press);
+    LastKeyDownBankButton = bank_button;
+    if (key_down)
+    {
+        clock_gettime(CLOCK_MONOTONIC_RAW, &started_down);
+        DownBankMask |= selected_bank_mask;
+        DownBankMask &= 0xf;
+    }
+    else
+    {
+        DownBankMask &= ~selected_bank_mask;
+        DownBankMask &= 0xf;
+    }
 
-    tklog_debug("MPCSwitchBankMode(bank_button=%02x, pressed=%d) => press_duration=%lld, is_click=%d, is_double_click=%d, shift=%d, current bank mask=%02x, rest mask=%02x\n",
-                bank_button, pressed, press_duration, is_click, is_double_click, shiftHoldMode, current_bank_layer_mask, RestBanksMask);
+    tklog_debug("MPCSwitchBankMode(bank_button=%02x, key_down=%d) => down_duration=%lld, is_click=%d, is_double_click=%d, shift=%d, current bank mask=%02x, rest mask=%02x, DownMask=%02x\n",
+                bank_button, key_down, down_duration, is_click, is_double_click, shiftHoldMode, current_bank_layer_mask, RestBanksMask, DownBankMask);
 
-
-    // Shifted => we switch to the OTHER layer permanently when we press
+    // // Shifted => we switch to the OTHER layer permanently when we press
     // if (shiftHoldMode)
     // {
-    //     if (pressed)
+    //     if (key_down)
     //     {
     //         if (bank_button == PAD_BANK_A)
     //         {
     //             // XXX Use this to toggle the 'momentary' mode bank?
     //         }
     //         else
-    //             MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    //             MPCSwitchMatrix(selected_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
     //     }
     //     else
     //         // We already were in the "momentary hold" so we just confirm it here
-    //         MPCSwitchMatrix(asked_bank_mask & current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    //         MPCSwitchMatrix(selected_bank_mask & current_bank_layer_mask, PAD_BANK_PERMANENTLY);
     // }
-    // Click => we switch to the A/B/C/D layer permanently
-    // The tricky part: when receiving the click we are in the OPPOSITE layer!
-    if (is_double_click)
-    {
-        MPCSwitchMatrix(asked_bank_mask & current_bank_layer_mask, PAD_BANK_PERMANENTLY);
-    }
-    else if (is_click)
-    {
-        // if (bank_button == PAD_BANK_A && current_bank_layer_mask == PAD_BANK_EFGH)
-        //     MPCSwitchMatrix(RestBanksMask & PAD_BANK_ABCD, PAD_BANK_PERMANENTLY);
-        MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
-    }
+    // // Click => we switch to the A/B/C/D layer permanently
+    // // The tricky part: when receiving the click we are in the OPPOSITE layer!
+    // ...double click is really tricky because it's hard to remember the layer at the 1st click
+    // if (is_double_click)
+    // {
+    //     MPCSwitchMatrix(selected_bank_mask & current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    // }
+    // else if (is_click)
+    // {
+    //     // if (bank_button == PAD_BANK_A && current_bank_layer_mask == PAD_BANK_EFGH)
+    //     //     MPCSwitchMatrix(RestBanksMask & PAD_BANK_ABCD, PAD_BANK_PERMANENTLY);
+    //     MPCSwitchMatrix(selected_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    // }
     // Hold modes
-    else if (pressed)
+    if (key_down)
     {
+        // If BankA button is down at the same time, consider the change as permanent
+        // Otherwise we assume it's temporary
+        // When changing mode, we ignore BANK_A status because it's a modifier key
+        bool lock_efgh = (DownBankMask | PAD_BANK_A) && (current_bank_layer_mask & PAD_BANK_EFGH);
+        tklog_debug("               ...(bank_button=%02x, key_down=%d) => lock_efgh=%d\n", bank_button, key_down, lock_efgh);
+        tklog_debug("               ...DownBankMask = %02x\n", (DownBankMask & ~PAD_BANK_A) << 4);
+        if (lock_efgh)
+            MPCSwitchMatrix((DownBankMask & ~PAD_BANK_A) << 4, PAD_BANK_PERMANENTLY);
+
+        // If we are in EFGH and we press BankA, we switch to ABCD (last seen layer)
+        else if (selected_bank_mask == PAD_BANK_A && current_bank_layer_mask == PAD_BANK_EFGH)
+            MPCSwitchMatrix(RestBanksMask & PAD_BANK_ABCD, PAD_BANK_PERMANENTLY);
+
         // Press/hold => we switch to the OTHER layer momentary (except for bank A)
         // if (bank_button == PAD_BANK_A && current_bank_layer_mask == PAD_BANK_EFGH)
         //     MPCSwitchMatrix(RestBanksMask & PAD_BANK_ABCD, PAD_BANK_MOMENTARY);
-        MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_MOMENTARY);
+        else
+            MPCSwitchMatrix(selected_bank_mask & ~current_bank_layer_mask, PAD_BANK_MOMENTARY);
     }
-    // Release => we switch back to the OTHER layer (where we came from)
+    // Release => we switch back to the saved layer (where we came from)
     else
     {
-        MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+        // If BANK_A is used a a modifier, we ignore KEY UP event
+        if ((bank_button == LIVEII_BT_BANK_A) && (DownBankMask & ~PAD_BANK_A))
+            return;
+
+        // Unless it's a click, return to whatever was before the button was pressed (?)
+        if (is_click)
+            // Go to rest bank's pressed button
+            MPCSwitchMatrix(selected_bank_mask & rest_bank_layer_mask, PAD_BANK_PERMANENTLY);
+        else
+            MPCSwitchMatrix(RestBanksMask, PAD_BANK_PERMANENTLY);
+        // if (current_bank_layer_mask == PAD_BANK_EFGH)
+        // {
+        //     if (!(DownBankMask | PAD_BANK_A))
+        //         MPCSwitchMatrix(selected_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+        //     // DownBankMask &= ~selected_bank_mask;
+        // }
     }
 }
 
@@ -501,29 +545,44 @@ void MPCSwitchMatrix(uint8_t new_mode, bool permanently)
     {
     case PAD_BANK_A:
         bt_bank_a[2] = BUTTON_COLOR_RED;
+        bt_bank_b[2] = BUTTON_COLOR_RED_LIGHT;
+        bt_bank_c[2] = BUTTON_COLOR_RED_LIGHT;
+        bt_bank_d[2] = BUTTON_COLOR_RED_LIGHT;
         break;
     case PAD_BANK_B:
         bt_bank_a[2] = BUTTON_COLOR_RED_LIGHT;
         bt_bank_b[2] = BUTTON_COLOR_RED;
+        bt_bank_c[2] = BUTTON_COLOR_RED_LIGHT;
+        bt_bank_d[2] = BUTTON_COLOR_RED_LIGHT;
         break;
     case PAD_BANK_C:
         bt_bank_a[2] = BUTTON_COLOR_RED_LIGHT;
+        bt_bank_b[2] = BUTTON_COLOR_RED_LIGHT;
         bt_bank_c[2] = BUTTON_COLOR_RED;
+        bt_bank_d[2] = BUTTON_COLOR_RED_LIGHT;
         break;
     case PAD_BANK_D:
         bt_bank_a[2] = BUTTON_COLOR_RED_LIGHT;
+        bt_bank_b[2] = BUTTON_COLOR_RED_LIGHT;
+        bt_bank_c[2] = BUTTON_COLOR_RED_LIGHT;
         bt_bank_d[2] = BUTTON_COLOR_RED;
         break;
     case PAD_BANK_F:
-        bt_bank_a[2] = BUTTON_COLOR_YELLOW;
+        bt_bank_a[2] = BUTTON_COLOR_YELLOW_RED;
         bt_bank_b[2] = BUTTON_COLOR_YELLOW;
+        bt_bank_c[2] = BUTTON_COLOR_YELLOW_LIGHT;
+        bt_bank_d[2] = BUTTON_COLOR_YELLOW_LIGHT;
         break;
     case PAD_BANK_G:
-        bt_bank_a[2] = BUTTON_COLOR_YELLOW;
+        bt_bank_a[2] = BUTTON_COLOR_YELLOW_RED;
+        bt_bank_b[2] = BUTTON_COLOR_YELLOW_LIGHT;
         bt_bank_c[2] = BUTTON_COLOR_YELLOW;
+        bt_bank_d[2] = BUTTON_COLOR_YELLOW_LIGHT;
         break;
     case PAD_BANK_H:
-        bt_bank_a[2] = BUTTON_COLOR_YELLOW;
+        bt_bank_a[2] = BUTTON_COLOR_YELLOW_RED;
+        bt_bank_b[2] = BUTTON_COLOR_YELLOW_LIGHT;
+        bt_bank_c[2] = BUTTON_COLOR_YELLOW_LIGHT;
         bt_bank_d[2] = BUTTON_COLOR_YELLOW;
         break;
     }
@@ -537,12 +596,15 @@ void MPCSwitchMatrix(uint8_t new_mode, bool permanently)
     // Save the new mode if it's permanently
     if (permanently)
     {
-        if (new_mode & PAD_BANK_ABCD)
-            RestBanksMask = ((RestBanksMask & ~PAD_BANK_ABCD) | new_mode);
-        else
-            RestBanksMask = ((RestBanksMask & ~PAD_BANK_EFGH) | new_mode);
+        RestBanksMask = new_mode;
+        // if (new_mode & PAD_BANK_ABCD)
+        //     RestBanksMask = ((RestBanksMask & ~PAD_BANK_ABCD) | new_mode);
+        // else
+        //     RestBanksMask = ((RestBanksMask & ~PAD_BANK_EFGH) | new_mode);
         tklog_debug("     ...Saving new RestBanksMask: %02x\n", RestBanksMask);
     }
+    if (new_mode & PAD_BANK_ABCD)
+        RestBankABCD = new_mode;
 
     // Actually draw pads IF WE REALLY CHANGED MODES
     if (new_mode != MPCPadMode)
@@ -917,9 +979,9 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         // BUTTONS PRESS / RELEASE------------------------------------------------
         if (myBuff[i] == 0x90)
         {
-            tklog_debug("Button 0x%02x %s\n", myBuff[i + 1], (myBuff[i + 2] == 0x7F ? "pressed" : "released"));
+            tklog_debug("Button 0x%02x %s\n", myBuff[i + 1], (myBuff[i + 2] == 0x7F ? "key_down" : "released"));
 
-            // SHIFT pressed/released (nb the SHIFT button can't be mapped)
+            // SHIFT key_down/released (nb the SHIFT button can't be mapped)
             // Double click on SHIFT is not managed at all. Avoid it.
             // NOTA: SHIFT IS NOW ONLY USED FOR QLINK KNOBS
             if (myBuff[i + 1] == SHIFT_KEY_VALUE)
@@ -994,6 +1056,8 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             // Or we're in banks B, C, D, in which case we remap the message completely!
             int pad_number = getMpcPadNumber(myBuff[i + 1]);
             tklog_debug("Pad number is %d \n", pad_number);
+
+            // General case
             switch (MPCPadMode)
             {
             case PAD_BANK_A:
@@ -1096,6 +1160,16 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 // uint8_t padC = padF % 8;
                 // uint8_t padM = 0x7F;
 
+                // Project init! We detect if PAD0 is lit, if so we switch to bank A for good measure
+                if (!project_loaded && padF == 0 && (myBuff[i + 1] != 0 || myBuff[i + 2] != 0 || myBuff[i + 3] != 0))
+                {
+                    tklog_debug("PROJECT INIT!!");
+                    {
+                        MPCSwitchBankMode(LIVEII_BT_BANK_A, true);
+                    }
+                    project_loaded = true;
+                }
+
                 // Update Force pad color cache
                 // XXX Those lines below are completely wrong, I should transpose first!
                 // XXX => use this Transpose Force pad to Mpc pad in the 4x4 current quadran
@@ -1130,7 +1204,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         else if (myBuff[i] == 0xB0)
         {
             // if (myBuff[i + 1] != 0x35)
-                // tklog_debug("App wants to write to the Force button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+            // tklog_debug("App wants to write to the Force button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
 
             // Very specific TAP button treatment
             if (myBuff[i + 1] == FORCE_BT_TAP_TEMPO)
