@@ -39,50 +39,49 @@ int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
 static bool shiftHoldMode = false;
 
 // To navigate in matrix when MPC spoofing a Force
-static uint8_t MPCPadMode = PAD_BANK_A_A;
-static uint8_t MPCPadModeBankA = PAD_BANK_A_A;
-static uint8_t RestBankMode = PAD_BANK_A_A;
-static uint8_t last_key = 0;
+static uint8_t MPCPadMode = PAD_BANK_A;
+static uint8_t RestBanksMask = PAD_BANK_A | PAD_BANK_F;
+static uint8_t LastPressedBankButton = 0;
 
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
-static const uint8_t MPCToForceA_A[] = {
+static const uint8_t MPCToForceA[] = {
     FORCEPADS_TABLE_IDX_OFFSET + 32, FORCEPADS_TABLE_IDX_OFFSET + 33, FORCEPADS_TABLE_IDX_OFFSET + 34, FORCEPADS_TABLE_IDX_OFFSET + 35,
     FORCEPADS_TABLE_IDX_OFFSET + 40, FORCEPADS_TABLE_IDX_OFFSET + 41, FORCEPADS_TABLE_IDX_OFFSET + 42, FORCEPADS_TABLE_IDX_OFFSET + 43,
     FORCEPADS_TABLE_IDX_OFFSET + 48, FORCEPADS_TABLE_IDX_OFFSET + 49, FORCEPADS_TABLE_IDX_OFFSET + 50, FORCEPADS_TABLE_IDX_OFFSET + 51,
     FORCEPADS_TABLE_IDX_OFFSET + 56, FORCEPADS_TABLE_IDX_OFFSET + 57, FORCEPADS_TABLE_IDX_OFFSET + 58, FORCEPADS_TABLE_IDX_OFFSET + 59};
 
-static const uint8_t MPCToForceA_B[] = {
+static const uint8_t MPCToForceB[] = {
     FORCEPADS_TABLE_IDX_OFFSET + 36, FORCEPADS_TABLE_IDX_OFFSET + 37, FORCEPADS_TABLE_IDX_OFFSET + 38, FORCEPADS_TABLE_IDX_OFFSET + 39,
     FORCEPADS_TABLE_IDX_OFFSET + 44, FORCEPADS_TABLE_IDX_OFFSET + 45, FORCEPADS_TABLE_IDX_OFFSET + 46, FORCEPADS_TABLE_IDX_OFFSET + 47,
     FORCEPADS_TABLE_IDX_OFFSET + 52, FORCEPADS_TABLE_IDX_OFFSET + 53, FORCEPADS_TABLE_IDX_OFFSET + 54, FORCEPADS_TABLE_IDX_OFFSET + 55,
     FORCEPADS_TABLE_IDX_OFFSET + 60, FORCEPADS_TABLE_IDX_OFFSET + 61, FORCEPADS_TABLE_IDX_OFFSET + 62, FORCEPADS_TABLE_IDX_OFFSET + 63};
 
-static const uint8_t MPCToForceA_C[] = {
+static const uint8_t MPCToForceC[] = {
     FORCEPADS_TABLE_IDX_OFFSET + 0, FORCEPADS_TABLE_IDX_OFFSET + 1, FORCEPADS_TABLE_IDX_OFFSET + 2, FORCEPADS_TABLE_IDX_OFFSET + 3,
     FORCEPADS_TABLE_IDX_OFFSET + 8, FORCEPADS_TABLE_IDX_OFFSET + 9, FORCEPADS_TABLE_IDX_OFFSET + 10, FORCEPADS_TABLE_IDX_OFFSET + 11,
     FORCEPADS_TABLE_IDX_OFFSET + 16, FORCEPADS_TABLE_IDX_OFFSET + 17, FORCEPADS_TABLE_IDX_OFFSET + 18, FORCEPADS_TABLE_IDX_OFFSET + 19,
     FORCEPADS_TABLE_IDX_OFFSET + 24, FORCEPADS_TABLE_IDX_OFFSET + 25, FORCEPADS_TABLE_IDX_OFFSET + 26, FORCEPADS_TABLE_IDX_OFFSET + 27};
 
-static const uint8_t MPCToForceA_D[] = {
+static const uint8_t MPCToForceD[] = {
     FORCEPADS_TABLE_IDX_OFFSET + 4, FORCEPADS_TABLE_IDX_OFFSET + 5, FORCEPADS_TABLE_IDX_OFFSET + 6, FORCEPADS_TABLE_IDX_OFFSET + 7,
     FORCEPADS_TABLE_IDX_OFFSET + 12, FORCEPADS_TABLE_IDX_OFFSET + 13, FORCEPADS_TABLE_IDX_OFFSET + 14, FORCEPADS_TABLE_IDX_OFFSET + 15,
     FORCEPADS_TABLE_IDX_OFFSET + 20, FORCEPADS_TABLE_IDX_OFFSET + 21, FORCEPADS_TABLE_IDX_OFFSET + 22, FORCEPADS_TABLE_IDX_OFFSET + 23,
     FORCEPADS_TABLE_IDX_OFFSET + 28, FORCEPADS_TABLE_IDX_OFFSET + 29, FORCEPADS_TABLE_IDX_OFFSET + 30, FORCEPADS_TABLE_IDX_OFFSET + 31};
 
-static const uint8_t MPCToForceB[] = {
+static const uint8_t MPCToForceF[] = {
     0, FORCE_BT_ASSIGN_A, FORCE_BT_ASSIGN_B, FORCE_BT_MASTER,
     FORCE_BT_MUTE, FORCE_BT_SOLO, FORCE_BT_REC_ARM, FORCE_BT_CLIP_STOP,
     FORCE_BT_MUTE_PAD5, FORCE_BT_MUTE_PAD6, FORCE_BT_MUTE_PAD7, FORCE_BT_MUTE_PAD8,
     FORCE_BT_MUTE_PAD1, FORCE_BT_MUTE_PAD2, FORCE_BT_MUTE_PAD3, FORCE_BT_MUTE_PAD4};
 
-static const uint8_t MPCToForceC[] = {
+static const uint8_t MPCToForceG[] = {
     0, FORCE_BT_UP, 0, 0,
     FORCE_BT_LEFT, FORCE_BT_DOWN, FORCE_BT_RIGHT, 0,
     FORCE_BT_COLUMN_PAD5, FORCE_BT_COLUMN_PAD6, FORCE_BT_COLUMN_PAD7, FORCE_BT_COLUMN_PAD8,
     FORCE_BT_COLUMN_PAD1, FORCE_BT_COLUMN_PAD2, FORCE_BT_COLUMN_PAD3, FORCE_BT_COLUMN_PAD4};
 
-static const uint8_t MPCToForceD[] = {
+static const uint8_t MPCToForceH[] = {
     0, FORCE_BT_UP, 0, FORCE_BT_STOP_ALL,
     FORCE_BT_LEFT, FORCE_BT_DOWN, FORCE_BT_RIGHT, 0,
     FORCE_BT_LAUNCH_5, FORCE_BT_LAUNCH_6, FORCE_BT_LAUNCH_7, FORCE_BT_LAUNCH_8,
@@ -91,95 +90,95 @@ static const uint8_t MPCToForceD[] = {
 // Here we convert the Force pad number to MPC bank.
 static const uint8_t ForcePadNumberToMPCBank[] = {
     // Line
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
     // Line
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
     // Line
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
     // Line
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_C,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
-    PAD_BANK_A_D,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_C,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
+    PAD_BANK_D,
     // Line
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
     // Line
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
     // Line
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
     // Line
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_A,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
-    PAD_BANK_A_B,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_A,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
+    PAD_BANK_B,
     // Line 9 (mute modes)
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
+    PAD_BANK_F,
+    PAD_BANK_F,
+    PAD_BANK_F,
+    PAD_BANK_F,
+    PAD_BANK_F,
+    PAD_BANK_F,
+    PAD_BANK_F,
+    PAD_BANK_F,
     // Line 10 (track select)
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
+    PAD_BANK_G,
+    PAD_BANK_G,
+    PAD_BANK_G,
+    PAD_BANK_G,
+    PAD_BANK_G,
+    PAD_BANK_G,
+    PAD_BANK_G,
+    PAD_BANK_G,
 };
 
 // Now for each bank we provide a Force to MPC pad mapping
@@ -196,32 +195,15 @@ static const uint8_t ForcePadNumberToMPCPadNumber[] = {
     12, 13, 14, 15, 8, 9, 10, 11    // Line 9 = track selection
 };
 
-// The is the ForceMatrixSelector, indicating an OR'ed value of the mode matrix
-// where we can find a controller.
-// The actual values are constructed at start time
-// static uint8_t ForceToMPCPadBank[256];
-
-// // These are the reversed matrices, mapping a Force button number to an MPC pad number
-// // They are initialized at start time and populated in the Write function
-// // This is not very memory efficient (...256 where only 16 are used)
-// // but we probably can afford to waste a few (kilo)bytes here.
-// static uint8_t ForceToMPCA_A[256];
-// static uint8_t ForceToMPCA_B[256];
-// static uint8_t ForceToMPCA_C[256];
-// static uint8_t ForceToMPCA_D[256];
-// static uint8_t ForceToMPCB[256];
-// static uint8_t ForceToMPCC[256];
-// static uint8_t ForceToMPCD[256];
-
 // These are the matrices where actual RGB values are stored
 // They are initialized at start time and populated in the Write function
-static ForceMPCPadColor_t MPCPadValuesA_A[16];
-static ForceMPCPadColor_t MPCPadValuesA_B[16];
-static ForceMPCPadColor_t MPCPadValuesA_C[16];
-static ForceMPCPadColor_t MPCPadValuesA_D[16];
+static ForceMPCPadColor_t MPCPadValuesA[16];
 static ForceMPCPadColor_t MPCPadValuesB[16];
 static ForceMPCPadColor_t MPCPadValuesC[16];
 static ForceMPCPadColor_t MPCPadValuesD[16];
+static ForceMPCPadColor_t MPCPadValuesF[16];
+static ForceMPCPadColor_t MPCPadValuesG[16];
+static ForceMPCPadColor_t MPCPadValuesH[16];
 
 // We keep the TAP value here to allow for a synchronized 'flash' effect
 // when battery is charging
@@ -291,18 +273,9 @@ void LoadMapping()
     // }
     for (int i = 0; i < 16; i++)
     {
-        MPCPadValuesA_A[i].r = 0x00;
-        MPCPadValuesA_A[i].g = 0x00;
-        MPCPadValuesA_A[i].b = 0x00;
-        MPCPadValuesA_B[i].r = 0x00;
-        MPCPadValuesA_B[i].g = 0x00;
-        MPCPadValuesA_B[i].b = 0x00;
-        MPCPadValuesA_C[i].r = 0x00;
-        MPCPadValuesA_C[i].g = 0x00;
-        MPCPadValuesA_C[i].b = 0x00;
-        MPCPadValuesA_D[i].r = 0x00;
-        MPCPadValuesA_D[i].g = 0x00;
-        MPCPadValuesD[i].b = 0x00;
+        MPCPadValuesA[i].r = 0x00;
+        MPCPadValuesA[i].g = 0x00;
+        MPCPadValuesA[i].b = 0x00;
         MPCPadValuesB[i].r = 0x00;
         MPCPadValuesB[i].g = 0x00;
         MPCPadValuesB[i].b = 0x00;
@@ -311,7 +284,16 @@ void LoadMapping()
         MPCPadValuesC[i].b = 0x00;
         MPCPadValuesD[i].r = 0x00;
         MPCPadValuesD[i].g = 0x00;
-        MPCPadValuesD[i].b = 0x00;
+        MPCPadValuesH[i].b = 0x00;
+        MPCPadValuesF[i].r = 0x00;
+        MPCPadValuesF[i].g = 0x00;
+        MPCPadValuesF[i].b = 0x00;
+        MPCPadValuesG[i].r = 0x00;
+        MPCPadValuesG[i].g = 0x00;
+        MPCPadValuesG[i].b = 0x00;
+        MPCPadValuesH[i].r = 0x00;
+        MPCPadValuesH[i].g = 0x00;
+        MPCPadValuesH[i].b = 0x00;
     }
 
     // Initialize timer
@@ -330,7 +312,7 @@ void PrepareFakeMidiMsg(uint8_t buf[])
 
 void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
 {
-    tklog_debug("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x)\n", matrix, pad_number);
+    // tklog_debug("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x)\n", matrix, pad_number);
 
     // Get pad coordinates
     uint8_t padL = pad_number / 4;
@@ -346,29 +328,11 @@ void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
     // Find the pad color as it's stored
     switch (matrix)
     {
-    case PAD_BANK_A_A:
+    case PAD_BANK_A:
         SetPadColor(padL, padC,
-                    MPCPadValuesA_A[pad_number].r,
-                    MPCPadValuesA_A[pad_number].g,
-                    MPCPadValuesA_A[pad_number].b);
-        break;
-    case PAD_BANK_A_B:
-        SetPadColor(padL, padC,
-                    MPCPadValuesA_B[pad_number].r,
-                    MPCPadValuesA_B[pad_number].g,
-                    MPCPadValuesA_B[pad_number].b);
-        break;
-    case PAD_BANK_A_C:
-        SetPadColor(padL, padC,
-                    MPCPadValuesA_C[pad_number].r,
-                    MPCPadValuesA_C[pad_number].g,
-                    MPCPadValuesA_C[pad_number].b);
-        break;
-    case PAD_BANK_A_D:
-        SetPadColor(padL, padC,
-                    MPCPadValuesA_D[pad_number].r,
-                    MPCPadValuesA_D[pad_number].g,
-                    MPCPadValuesA_D[pad_number].b);
+                    MPCPadValuesA[pad_number].r,
+                    MPCPadValuesA[pad_number].g,
+                    MPCPadValuesA[pad_number].b);
         break;
     case PAD_BANK_B:
         SetPadColor(padL, padC,
@@ -388,6 +352,24 @@ void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
                     MPCPadValuesD[pad_number].g,
                     MPCPadValuesD[pad_number].b);
         break;
+    case PAD_BANK_F:
+        SetPadColor(padL, padC,
+                    MPCPadValuesF[pad_number].r,
+                    MPCPadValuesF[pad_number].g,
+                    MPCPadValuesF[pad_number].b);
+        break;
+    case PAD_BANK_G:
+        SetPadColor(padL, padC,
+                    MPCPadValuesG[pad_number].r,
+                    MPCPadValuesG[pad_number].g,
+                    MPCPadValuesG[pad_number].b);
+        break;
+    case PAD_BANK_H:
+        SetPadColor(padL, padC,
+                    MPCPadValuesH[pad_number].r,
+                    MPCPadValuesH[pad_number].g,
+                    MPCPadValuesH[pad_number].b);
+        break;
     }
 }
 
@@ -397,101 +379,116 @@ void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
 void MPCSwitchBankMode(uint8_t bank_button, bool pressed)
 {
     struct timespec now;
-    uint8_t new_mode;
+    uint8_t asked_bank_mask;
+    uint64_t press_duration;
+    bool is_click = false;        // press -> release in less than 0.5s
+    bool is_double_click = false; // press -> release -> press -> release in less than 0.5s
+    uint8_t current_bank_layer_mask = (MPCPadMode & 0x0f) ? PAD_BANK_ABCD : PAD_BANK_EFGH;
 
-    // Ok we keep in mind a few things.
-    // MPCPadMode is the *current* mode we're in (ie what's displayed)
-    // bank_button is the button that was pressed.
-    // pressed is a boolean that tells us if the button was pressed or released.
-    // BankALayerMode is the current layer mode for bank A (maybe not displayed)
-    // RestBankMode is the bank mode "at rest", ie when not button is pressed.
-    // Let's go.
-
-    // If we *press* a button, we activate the mode immediately,
-    // but we'll keep the underlying mode in RestBankMode
-    clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-    if (pressed)
+    // Convert bank_button to bank_pad
+    switch (bank_button)
     {
-        // Is it a double click?
-        uint64_t duration = (now.tv_sec - started_press.tv_sec) * 1000 + (now.tv_nsec - started_press.tv_nsec) / 1000000;
-
-        // Immediately switch to the new matrix.
-        if (bank_button == LIVEII_BT_BANK_A)
-        {
-            new_mode = MPCPadModeBankA;
-            RestBankMode = MPCPadModeBankA;
-        }
-        else if (bank_button == LIVEII_BT_BANK_B)
-            new_mode = PAD_BANK_B;
-        else if (bank_button == LIVEII_BT_BANK_C)
-            new_mode = PAD_BANK_C;
-        else if (bank_button == LIVEII_BT_BANK_D)
-            new_mode = PAD_BANK_D;
-
-        // Actually switch
-        MPCSwitchMatrix(new_mode);
-
-        // If we used shift, we consider these are the new rest modes
-        if (shiftHoldMode && MPCPadMode >= PAD_BANK_B)
-        {
-            RestBankMode = MPCPadMode;
-        }
-
-        // If we used double-click, considere this is now the rest mode
-        if (last_key == bank_button && duration < DOUBLE_CLICK_DELAY && MPCPadMode >= PAD_BANK_B)
-        {
-            tklog_debug("Double click: %d ms\n", duration);
-            RestBankMode = MPCPadMode;
-        }
-
-        // Keep track of the last key and current time
-        last_key = bank_button;
-        clock_gettime(CLOCK_MONOTONIC_RAW, &started_press);
+    case LIVEII_BT_BANK_A:
+        asked_bank_mask = PAD_BANK_A | PAD_BANK_E;
+        break;
+    case LIVEII_BT_BANK_B:
+        asked_bank_mask = PAD_BANK_B | PAD_BANK_F;
+        break;
+    case LIVEII_BT_BANK_C:
+        asked_bank_mask = PAD_BANK_C | PAD_BANK_G;
+        break;
+    case LIVEII_BT_BANK_D:
+        asked_bank_mask = PAD_BANK_D | PAD_BANK_H;
+        break;
     }
-    else
+
+    // Handle click / hold / doubleclick stuff
+    clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+    if (LastPressedBankButton == bank_button)
     {
-        // We just released the button.
-        // 1- if button is 'locked' (ie. rest mode >= BANK_B), we keep in there.
-        // 2- if button is not locked, we want to change banks A_x
-        if (RestBankMode >= PAD_BANK_B)
-            MPCSwitchMatrix(RestBankMode);
+        press_duration = (now.tv_sec - started_press.tv_sec) * 1000 + (now.tv_nsec - started_press.tv_nsec) / 1000000;
+        if (pressed)
+        {
+            if (press_duration < DOUBLE_CLICK_DELAY)
+            {
+                is_double_click = true;
+                started_press.tv_sec = 0; // Avoid mixing double clicks and click at release
+            }
+        }
         else
         {
-            // XXX Did we release it BEFORE the double click delay?
-            switch (bank_button)
-            {
-            case LIVEII_BT_BANK_A:
-                new_mode = PAD_BANK_A_A;
-                break;
-            case LIVEII_BT_BANK_B:
-                new_mode = PAD_BANK_A_B;
-                break;
-            case LIVEII_BT_BANK_C:
-                new_mode = PAD_BANK_A_C;
-                break;
-            case LIVEII_BT_BANK_D:
-                new_mode = PAD_BANK_A_D;
-                break;
-            }
-
-            // New rest mode becomes current mode: we "validate" previous press
-            MPCSwitchMatrix(new_mode);
-            if (new_mode < PAD_BANK_B)
-            {
-                MPCPadModeBankA = new_mode;
-                RestBankMode = MPCPadMode;
-            }
+            if (press_duration < HOLD_DELAY)
+                is_click = true;
         }
+    }
+    LastPressedBankButton = bank_button;
+    if (pressed)
+        clock_gettime(CLOCK_MONOTONIC_RAW, &started_press);
+
+    tklog_debug("MPCSwitchBankMode(bank_button=%02x, pressed=%d) => press_duration=%lld, is_click=%d, is_double_click=%d, shift=%d, current bank mask=%02x, rest mask=%02x\n",
+                bank_button, pressed, press_duration, is_click, is_double_click, shiftHoldMode, current_bank_layer_mask, RestBanksMask);
+
+
+    // Shifted => we switch to the OTHER layer permanently when we press
+    // if (shiftHoldMode)
+    // {
+    //     if (pressed)
+    //     {
+    //         if (bank_button == PAD_BANK_A)
+    //         {
+    //             // XXX Use this to toggle the 'momentary' mode bank?
+    //         }
+    //         else
+    //             MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    //     }
+    //     else
+    //         // We already were in the "momentary hold" so we just confirm it here
+    //         MPCSwitchMatrix(asked_bank_mask & current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    // }
+    // Click => we switch to the A/B/C/D layer permanently
+    // The tricky part: when receiving the click we are in the OPPOSITE layer!
+    if (is_double_click)
+    {
+        MPCSwitchMatrix(asked_bank_mask & current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    }
+    else if (is_click)
+    {
+        // if (bank_button == PAD_BANK_A && current_bank_layer_mask == PAD_BANK_EFGH)
+        //     MPCSwitchMatrix(RestBanksMask & PAD_BANK_ABCD, PAD_BANK_PERMANENTLY);
+        MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
+    }
+    // Hold modes
+    else if (pressed)
+    {
+        // Press/hold => we switch to the OTHER layer momentary (except for bank A)
+        // if (bank_button == PAD_BANK_A && current_bank_layer_mask == PAD_BANK_EFGH)
+        //     MPCSwitchMatrix(RestBanksMask & PAD_BANK_ABCD, PAD_BANK_MOMENTARY);
+        MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_MOMENTARY);
+    }
+    // Release => we switch back to the OTHER layer (where we came from)
+    else
+    {
+        MPCSwitchMatrix(asked_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
     }
 }
 
 ////////
 // Completely redraw the pads according to the mode we're in.
-// Also take care of the "PAD BANK" button according to the proper mode
+// Also take care of the "PAD BANK" button according to the proper mode.
+// If 'permanently' is True, it will replace the 'RestBankMode'.
 ////////
-void MPCSwitchMatrix(uint8_t new_mode)
+void MPCSwitchMatrix(uint8_t new_mode, bool permanently)
 {
-    tklog_debug("Switching to mode %02x (from current mode: %02x)\n", new_mode, MPCPadMode);
+    // Debug + handle special case (0x10 is conveniently remapped to whatever current layer of 0x0F is)
+    tklog_debug("     ...Switching to mode %02x (from current mode: %02x), permanent=%d\n", new_mode, MPCPadMode, permanently);
+    if (new_mode == 0x10)
+    {
+        if (permanently)
+            new_mode = 0x01;
+        else
+            new_mode = RestBanksMask & 0x0f;
+        tklog_debug("     OOOPS: actually switching to %02x\n", new_mode);
+    }
 
     // Reset all "PAD BANK" buttons
     uint8_t bt_bank_a[] = {0xB0, BANK_A, BUTTON_COLOR_OFF};
@@ -502,28 +499,31 @@ void MPCSwitchMatrix(uint8_t new_mode)
     // React according to the mode we switched to
     switch (new_mode)
     {
-    case PAD_BANK_A_A:
+    case PAD_BANK_A:
         bt_bank_a[2] = BUTTON_COLOR_RED;
         break;
-    case PAD_BANK_A_B:
+    case PAD_BANK_B:
+        bt_bank_a[2] = BUTTON_COLOR_RED_LIGHT;
         bt_bank_b[2] = BUTTON_COLOR_RED;
         break;
-    case PAD_BANK_A_C:
+    case PAD_BANK_C:
+        bt_bank_a[2] = BUTTON_COLOR_RED_LIGHT;
         bt_bank_c[2] = BUTTON_COLOR_RED;
         break;
-    case PAD_BANK_A_D:
+    case PAD_BANK_D:
+        bt_bank_a[2] = BUTTON_COLOR_RED_LIGHT;
         bt_bank_d[2] = BUTTON_COLOR_RED;
         break;
-    case PAD_BANK_B:
-        bt_bank_a[2] = BUTTON_COLOR_YELLOW_LIGHT;
+    case PAD_BANK_F:
+        bt_bank_a[2] = BUTTON_COLOR_YELLOW;
         bt_bank_b[2] = BUTTON_COLOR_YELLOW;
         break;
-    case PAD_BANK_C:
-        bt_bank_a[2] = BUTTON_COLOR_YELLOW_LIGHT;
+    case PAD_BANK_G:
+        bt_bank_a[2] = BUTTON_COLOR_YELLOW;
         bt_bank_c[2] = BUTTON_COLOR_YELLOW;
         break;
-    case PAD_BANK_D:
-        bt_bank_a[2] = BUTTON_COLOR_YELLOW_LIGHT;
+    case PAD_BANK_H:
+        bt_bank_a[2] = BUTTON_COLOR_YELLOW;
         bt_bank_d[2] = BUTTON_COLOR_YELLOW;
         break;
     }
@@ -534,7 +534,15 @@ void MPCSwitchMatrix(uint8_t new_mode)
     orig_snd_rawmidi_write(rawvirt_outpriv, bt_bank_c, sizeof(bt_bank_c));
     orig_snd_rawmidi_write(rawvirt_outpriv, bt_bank_d, sizeof(bt_bank_d));
 
-    // Save the new mode
+    // Save the new mode if it's permanently
+    if (permanently)
+    {
+        if (new_mode & PAD_BANK_ABCD)
+            RestBanksMask = ((RestBanksMask & ~PAD_BANK_ABCD) | new_mode);
+        else
+            RestBanksMask = ((RestBanksMask & ~PAD_BANK_EFGH) | new_mode);
+        tklog_debug("     ...Saving new RestBanksMask: %02x\n", RestBanksMask);
+    }
 
     // Actually draw pads IF WE REALLY CHANGED MODES
     if (new_mode != MPCPadMode)
@@ -550,7 +558,7 @@ void MPCSwitchMatrix(uint8_t new_mode)
 void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
 {
     // Set default colors for each button type
-    // XXX TODO: make this configurable
+    // XXX This should be initialized at startup time
     ForceMPCPadColor_t color_on;
     ForceMPCPadColor_t color_off;
     switch (force_pad_note_number)
@@ -633,62 +641,62 @@ void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
     // We look into each matrix becaue one button could be present several times!
     for (u_int8_t i = 0; i < 16; i++)
     {
-        if (MPCToForceB[i] == force_pad_note_number)
+        if (MPCToForceF[i] == force_pad_note_number)
         {
-            tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-            tklog_debug("   -> found pad %02x in matrix B\n", i);
+            // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
+            // tklog_debug("   -> found pad %02x in matrix B\n", i);
             if (on)
             {
-                MPCPadValuesB[i].r = color_on.r;
-                MPCPadValuesB[i].g = color_on.g;
-                MPCPadValuesB[i].b = color_on.b;
+                MPCPadValuesF[i].r = color_on.r;
+                MPCPadValuesF[i].g = color_on.g;
+                MPCPadValuesF[i].b = color_on.b;
             }
             else
             {
-                MPCPadValuesB[i].r = color_off.r;
-                MPCPadValuesB[i].g = color_off.g;
-                MPCPadValuesB[i].b = color_off.b;
+                MPCPadValuesF[i].r = color_off.r;
+                MPCPadValuesF[i].g = color_off.g;
+                MPCPadValuesF[i].b = color_off.b;
             }
-            if (MPCPadMode == PAD_BANK_B)
-                DrawMatrixPadFromCache(PAD_BANK_B, i);
+            if (MPCPadMode == PAD_BANK_F)
+                DrawMatrixPadFromCache(PAD_BANK_F, i);
         }
-        if (MPCToForceC[i] == force_pad_note_number)
+        if (MPCToForceG[i] == force_pad_note_number)
         {
-            tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-            tklog_debug("   -> found pad %02x in matrix C\n", i);
+            // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
+            // tklog_debug("   -> found pad %02x in matrix C\n", i);
             if (on)
             {
-                MPCPadValuesC[i].r = color_on.r;
-                MPCPadValuesC[i].g = color_on.g;
-                MPCPadValuesC[i].b = color_on.b;
+                MPCPadValuesG[i].r = color_on.r;
+                MPCPadValuesG[i].g = color_on.g;
+                MPCPadValuesG[i].b = color_on.b;
             }
             else
             {
-                MPCPadValuesC[i].r = color_off.r;
-                MPCPadValuesC[i].g = color_off.g;
-                MPCPadValuesC[i].b = color_off.b;
+                MPCPadValuesG[i].r = color_off.r;
+                MPCPadValuesG[i].g = color_off.g;
+                MPCPadValuesG[i].b = color_off.b;
             }
-            if (MPCPadMode == PAD_BANK_C)
-                DrawMatrixPadFromCache(PAD_BANK_C, i);
+            if (MPCPadMode == PAD_BANK_G)
+                DrawMatrixPadFromCache(PAD_BANK_G, i);
         }
-        if (MPCToForceD[i] == force_pad_note_number)
+        if (MPCToForceH[i] == force_pad_note_number)
         {
-            tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-            tklog_debug("   -> found pad %02x in matrix D\n", i);
+            // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
+            // tklog_debug("   -> found pad %02x in matrix D\n", i);
             if (on)
             {
-                MPCPadValuesD[i].r = color_on.r;
-                MPCPadValuesD[i].g = color_on.g;
-                MPCPadValuesD[i].b = color_on.b;
+                MPCPadValuesH[i].r = color_on.r;
+                MPCPadValuesH[i].g = color_on.g;
+                MPCPadValuesH[i].b = color_on.b;
             }
             else
             {
-                MPCPadValuesD[i].r = color_off.r;
-                MPCPadValuesD[i].g = color_off.g;
-                MPCPadValuesD[i].b = color_off.b;
+                MPCPadValuesH[i].r = color_off.r;
+                MPCPadValuesH[i].g = color_off.g;
+                MPCPadValuesH[i].b = color_off.b;
             }
-            if (MPCPadMode == PAD_BANK_D)
-                DrawMatrixPadFromCache(PAD_BANK_D, i);
+            if (MPCPadMode == PAD_BANK_H)
+                DrawMatrixPadFromCache(PAD_BANK_H, i);
         }
     }
 
@@ -699,36 +707,18 @@ void CacheForcePad(uint8_t force_pad_number, uint8_t r, uint8_t g, uint8_t b)
 {
     // force_pad_number starts from 0.
     // Find which matrix is this pad located in
-    tklog_debug("CacheForcePad: %02x %02x %02x %02x\n", force_pad_number, r, g, b);
+    // tklog_debug("CacheForcePad: %02x %02x %02x %02x\n", force_pad_number, r, g, b);
     uint8_t mpc_bank = ForcePadNumberToMPCBank[force_pad_number];
     uint8_t mpc_pad_number = ForcePadNumberToMPCPadNumber[force_pad_number];
-    tklog_debug("   -> mpc_bank: %02x, mpc_pad_number (/16): %02x\n", mpc_bank, mpc_pad_number);
+    // tklog_debug("   -> mpc_bank: %02x, mpc_pad_number (/16): %02x\n", mpc_bank, mpc_pad_number);
 
     // Select the proper bank cache.
     // Remember that a control can be on several matrices!
-    if (mpc_bank & PAD_BANK_A_A)
+    if (mpc_bank & PAD_BANK_A)
     {
-        MPCPadValuesA_A[mpc_pad_number].r = r;
-        MPCPadValuesA_A[mpc_pad_number].g = g;
-        MPCPadValuesA_A[mpc_pad_number].b = b;
-    }
-    if (mpc_bank & PAD_BANK_A_B)
-    {
-        MPCPadValuesA_B[mpc_pad_number].r = r;
-        MPCPadValuesA_B[mpc_pad_number].g = g;
-        MPCPadValuesA_B[mpc_pad_number].b = b;
-    }
-    if (mpc_bank & PAD_BANK_A_C)
-    {
-        MPCPadValuesA_C[mpc_pad_number].r = r;
-        MPCPadValuesA_C[mpc_pad_number].g = g;
-        MPCPadValuesA_C[mpc_pad_number].b = b;
-    }
-    if (mpc_bank & PAD_BANK_A_D)
-    {
-        MPCPadValuesA_D[mpc_pad_number].r = r;
-        MPCPadValuesA_D[mpc_pad_number].g = g;
-        MPCPadValuesA_D[mpc_pad_number].b = b;
+        MPCPadValuesA[mpc_pad_number].r = r;
+        MPCPadValuesA[mpc_pad_number].g = g;
+        MPCPadValuesA[mpc_pad_number].b = b;
     }
     if (mpc_bank & PAD_BANK_B)
     {
@@ -747,6 +737,24 @@ void CacheForcePad(uint8_t force_pad_number, uint8_t r, uint8_t g, uint8_t b)
         MPCPadValuesD[mpc_pad_number].r = r;
         MPCPadValuesD[mpc_pad_number].g = g;
         MPCPadValuesD[mpc_pad_number].b = b;
+    }
+    if (mpc_bank & PAD_BANK_F)
+    {
+        MPCPadValuesF[mpc_pad_number].r = r;
+        MPCPadValuesF[mpc_pad_number].g = g;
+        MPCPadValuesF[mpc_pad_number].b = b;
+    }
+    if (mpc_bank & PAD_BANK_G)
+    {
+        MPCPadValuesG[mpc_pad_number].r = r;
+        MPCPadValuesG[mpc_pad_number].g = g;
+        MPCPadValuesG[mpc_pad_number].b = b;
+    }
+    if (mpc_bank & PAD_BANK_H)
+    {
+        MPCPadValuesH[mpc_pad_number].r = r;
+        MPCPadValuesH[mpc_pad_number].g = g;
+        MPCPadValuesH[mpc_pad_number].b = b;
     }
 
     // Do we HAVE to update the pad?
@@ -770,7 +778,7 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
     int p = 0;
 
     // Log event
-    tklog_debug("Set pad color : L=%d C=%d r g b %02X %02X %02X\n", padL, padC, r, g, b);
+    // tklog_debug("Set pad color : L=%d C=%d r g b %02X %02X %02X\n", padL, padC, r, g, b);
 
     // Double-check input data
     if (padL > 3 || padC > 3)
@@ -810,7 +818,7 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
         sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "%02X ", sysexBuff[i]);
     }
     sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "\n");
-    tklog_debug("%s", sysexBuffDebug);
+    // tklog_debug("%s", sysexBuffDebug);
 
     // Send the sysex to the MPC controller
     orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
@@ -988,17 +996,17 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             tklog_debug("Pad number is %d \n", pad_number);
             switch (MPCPadMode)
             {
-            case PAD_BANK_A_A:
-                myBuff[i + 1] = MPCToForceA_A[pad_number];
+            case PAD_BANK_A:
+                myBuff[i + 1] = MPCToForceA[pad_number];
                 break;
-            case PAD_BANK_A_B:
-                myBuff[i + 1] = MPCToForceA_B[pad_number];
+            case PAD_BANK_B:
+                myBuff[i + 1] = MPCToForceB[pad_number];
                 break;
-            case PAD_BANK_A_C:
-                myBuff[i + 1] = MPCToForceA_C[pad_number];
+            case PAD_BANK_C:
+                myBuff[i + 1] = MPCToForceC[pad_number];
                 break;
-            case PAD_BANK_A_D:
-                myBuff[i + 1] = MPCToForceA_D[pad_number];
+            case PAD_BANK_D:
+                myBuff[i + 1] = MPCToForceD[pad_number];
                 break;
 
             default:
@@ -1016,23 +1024,23 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 // myBuff[i] == 0x90;
                 switch (MPCPadMode)
                 {
-                case PAD_BANK_B:
+                case PAD_BANK_F:
                     tklog_debug("...converting input %02x %02x %02x ...\n",
                                 myBuff[i], myBuff[i + 1], myBuff[i + 2]);
                     myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCToForceB[pad_number];
+                    myBuff[i + 1] = MPCToForceF[pad_number];
                     myBuff[i] = 0x90;
                     tklog_debug("......to %02x %02x %02x\n",
                                 myBuff[i], myBuff[i + 1], myBuff[i + 2]);
                     break;
-                case PAD_BANK_C:
+                case PAD_BANK_G:
                     myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCToForceC[pad_number];
+                    myBuff[i + 1] = MPCToForceG[pad_number];
                     myBuff[i] = 0x90;
                     break;
-                case PAD_BANK_D:
+                case PAD_BANK_H:
                     myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCToForceD[pad_number];
+                    myBuff[i + 1] = MPCToForceH[pad_number];
                     myBuff[i] = 0x90;
                     break;
                 }
@@ -1083,7 +1091,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 
                 // Regular Pad
                 uint8_t padF = myBuff[i];
-                tklog_debug("  [write] Inside Pad Color Sysex for pad %02x\n", padF);
+                // tklog_debug("  [write] Inside Pad Color Sysex for pad %02x\n", padF);
                 // uint8_t padL = padF / 8;
                 // uint8_t padC = padF % 8;
                 // uint8_t padM = 0x7F;
@@ -1121,8 +1129,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         // Check if we must remap...
         else if (myBuff[i] == 0xB0)
         {
-            if (myBuff[i + 1] != 0x35)
-                tklog_debug("App wants to write to the Force button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+            // if (myBuff[i + 1] != 0x35)
+                // tklog_debug("App wants to write to the Force button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
 
             // Very specific TAP button treatment
             if (myBuff[i + 1] == FORCE_BT_TAP_TEMPO)

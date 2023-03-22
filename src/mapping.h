@@ -14,11 +14,12 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
 extern void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint32_t rgbColorValue);
 extern void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b);
 extern void displayBatteryStatus();
-extern void MPCSwitchMatrix(uint8_t new_mode);
+extern void MPCSwitchMatrix(uint8_t new_mode, bool permanently);
 
 // Press mode delay in ms. If we keep pressing for more than this time,
 // consider this mode as a temporary toggle
-#define DOUBLE_CLICK_DELAY 1000
+#define DOUBLE_CLICK_DELAY 500      // release -> pressed of the same button considered a dbl click
+#define HOLD_DELAY 500              // Less than HOLD_DELAY is considered a click
 
 // Pads Color cache captured from sysex events
 typedef struct
@@ -29,13 +30,18 @@ typedef struct
 } ForceMPCPadColor_t;
 
 // Pad modes
-#define PAD_BANK_A_A     0x01       // Regular pads, lower left quadrant
-#define PAD_BANK_A_B     0x02       // Regular pads
-#define PAD_BANK_A_C     0x04
-#define PAD_BANK_A_D     0x08
-#define PAD_BANK_B       0x20       // Track settings pad
-#define PAD_BANK_C       0x40       // Track numbers and arrows
-#define PAD_BANK_D       0x80       // Scenes and arrows
+#define PAD_BANK_A          0x01       // Regular pads, lower left quadrant
+#define PAD_BANK_B          0x02       // Regular pads
+#define PAD_BANK_C          0x04
+#define PAD_BANK_D          0x08
+#define PAD_BANK_E          0x10       // NOT USED!
+#define PAD_BANK_F          0x20       // Track settings pad
+#define PAD_BANK_G          0x40       // Track numbers and arrows
+#define PAD_BANK_H          0x80       // Scenes and arrows
+#define PAD_BANK_ABCD       0x0F        // Groups of banks
+#define PAD_BANK_EFGH       0xF0        // Groups of banks
+#define PAD_BANK_MOMENTARY      false
+#define PAD_BANK_PERMANENTLY    true
 
 
 // Basic assignments
