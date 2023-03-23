@@ -749,10 +749,10 @@ void CacheForcePad(uint8_t force_pad_number, uint8_t r, uint8_t g, uint8_t b)
 {
     // force_pad_number starts from 0.
     // Find which matrix is this pad located in
-    // tklog_debug("CacheForcePad: %02x %02x %02x %02x\n", force_pad_number, r, g, b);
+    tklog_debug("CacheForcePad: %02x %02x %02x %02x\n", force_pad_number, r, g, b);
     uint8_t mpc_bank = ForcePadNumberToMPCBank[force_pad_number];
     uint8_t mpc_pad_number = ForcePadNumberToMPCPadNumber[force_pad_number];
-    // tklog_debug("   -> mpc_bank: %02x, mpc_pad_number (/16): %02x\n", mpc_bank, mpc_pad_number);
+    tklog_debug("   -> mpc_bank: %02x, mpc_pad_number (/16): %02x\n", mpc_bank, mpc_pad_number);
 
     // Select the proper bank cache.
     // Remember that a control can be on several matrices!
@@ -826,7 +826,7 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
     int p = 0;
 
     // Log event
-    // tklog_debug("Set pad color : L=%d C=%d r g b %02X %02X %02X\n", padL, padC, r, g, b);
+    tklog_debug("               Set pad color: L=%d C=%d r g b %02X %02X %02X\n", padL, padC, r, g, b);
 
     // Double-check input data
     if (padL > 3 || padC > 3)
@@ -965,7 +965,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         // BUTTONS PRESS / RELEASE------------------------------------------------
         if (myBuff[i] == 0x90)
         {
-            tklog_debug("Button 0x%02x %s\n", myBuff[i + 1], (myBuff[i + 2] == 0x7F ? "key_down" : "released"));
+            // tklog_debug("Button 0x%02x %s\n", myBuff[i + 1], (myBuff[i + 2] == 0x7F ? "key_down" : "released"));
 
             // SHIFT key_down/released (nb the SHIFT button can't be mapped)
             // Double click on SHIFT is not managed at all. Avoid it.
@@ -1124,6 +1124,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 {
     uint8_t *myBuff = (uint8_t *)midiBuffer;
     size_t i = 0;
+    size_t sysex_start = 0;
     while (i < size)
     {
         // AKAI SYSEX
@@ -1133,6 +1134,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         {
             // Update the sysex id in the sysex for our original hardware
             // tklog_debug("Inside Akai Sysex\n");
+            sysex_start = i;
             i += sizeof(AkaiSysex);
             myBuff[i] = DeviceInfoBloc[MPCOriginalId].sysexId;
             i++;
@@ -1146,10 +1148,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 
                 // Regular Pad
                 uint8_t padF = myBuff[i];
-                // tklog_debug("  [write] Inside Pad Color Sysex for pad %02x\n", padF);
-                // uint8_t padL = padF / 8;
-                // uint8_t padC = padF % 8;
-                // uint8_t padM = 0x7F;
+                // tklog_debug("  [write] Inside Pad Color Sysex for pad %02x / r=%02x g=%02x b=%02x\n", padF,
+                //             myBuff[i + 1], myBuff[i + 2], myBuff[i + 3]);
 
                 // Project init! We detect if PAD0 is lit, if so we switch to bank A for good measure
                 if (!project_loaded && padF == 0 && (myBuff[i + 1] != 0 || myBuff[i + 2] != 0 || myBuff[i + 3] != 0))
@@ -1161,17 +1161,6 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                     project_loaded = true;
                 }
 
-                // Update Force pad color cache
-                // XXX Those lines below are completely wrong, I should transpose first!
-                // XXX => use this Transpose Force pad to Mpc pad in the 4x4 current quadran
-                // if (padL >= MPCPad_OffsetL && padL < MPCPad_OffsetL + 4)
-                // {
-                //     if (padC >= MPCPad_OffsetC && padC < MPCPad_OffsetC + 4)
-                //     {
-                //         padM = (3 - (padL - MPCPad_OffsetL)) * 4 + (padC - MPCPad_OffsetC);
-                //     }
-                // }
-
                 // Set matrix pad cache, update if we ought to update
                 CacheForcePad(
                     padF,
@@ -1179,12 +1168,10 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                     myBuff[i + 2],
                     myBuff[i + 3]);
 
-                // Update the pad# in the midi buffer
-                // XXX Why would I do that?
-                // XXX We give a random pad number and voilà
-                // myBuff[i] = padM;
-                myBuff[i] = 0x7f;
-
+                // We completely change the sysex message
+                // so the hardware interface won't interpret it at all
+                // (because all of the updates has been made by CacheForcePad())
+                myBuff[sysex_start + 1] = 0x0F;
                 i += 5; // Next msg
             }
         }
@@ -1210,7 +1197,9 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 // tklog_debug("MAP INV %d->%d\n",myBuff[i+1],map_ButtonsLeds_Inv[ myBuff[i+1] ]);
                 myBuff[i + 1] = map_ButtonsLeds_Inv[myBuff[i + 1]];
                 if (myBuff[i + 1] != 0x35)
-                    tklog_debug("...remapped to button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+                {
+                    // tklog_debug("...remapped to button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+                }
             }
             else
             {
