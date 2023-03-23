@@ -30,6 +30,7 @@ typedef struct
 } ForceMPCPadColor_t;
 
 // Pad modes
+#define PAD_BANK_RESTORE    0x00        // Go back to the previous bank
 #define PAD_BANK_A          0x01       // Regular pads, lower left quadrant
 #define PAD_BANK_B          0x02       // Regular pads
 #define PAD_BANK_C          0x04
