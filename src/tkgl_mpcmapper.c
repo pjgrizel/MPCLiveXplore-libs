@@ -944,7 +944,6 @@ ssize_t snd_rawmidi_write(snd_rawmidi_t *rawmidi, const void *buffer, size_t siz
         }
     }
 
-    // Every 60 seconds, we display the battery status
     if (rawMidiDumpPostFlag)
         RawMidiDump(rawmidi, 'o', 'w', buffer, size);
 

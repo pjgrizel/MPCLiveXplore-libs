@@ -745,7 +745,8 @@ void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
     return;
 }
 
-void CacheForcePad(uint8_t force_pad_number, uint8_t r, uint8_t g, uint8_t b)
+// Cache force pad, and draw it if it's the current matrix
+uint8_t CacheForcePad(uint8_t force_pad_number, uint8_t r, uint8_t g, uint8_t b)
 {
     // force_pad_number starts from 0.
     // Find which matrix is this pad located in
@@ -806,11 +807,14 @@ void CacheForcePad(uint8_t force_pad_number, uint8_t r, uint8_t g, uint8_t b)
     }
 
     // Do we HAVE to update the pad?
-    // In that case we just propagate the message
+    // In that case we return the remapped pad number
     if (MPCPadMode == mpc_bank)
     {
-        DrawMatrixPadFromCache(mpc_bank, mpc_pad_number);
+        tklog_debug("     => Ask to repaint pad %02x", mpc_pad_number);
+        return mpc_pad_number;
+        // DrawMatrixPadFromCache(mpc_bank, mpc_pad_number);
     }
+    return 0x03; // We light a pad just for testing purposes
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -866,7 +870,7 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
         sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "%02X ", sysexBuff[i]);
     }
     sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "\n");
-    // tklog_debug("%s", sysexBuffDebug);
+    tklog_debug("%s", sysexBuffDebug);
 
     // Send the sysex to the MPC controller
     orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
@@ -1124,7 +1128,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 {
     uint8_t *myBuff = (uint8_t *)midiBuffer;
     size_t i = 0;
-    size_t sysex_start = 0;
+    uint8_t pad_to_update=0x00;
+
     while (i < size)
     {
         // AKAI SYSEX
@@ -1134,7 +1139,6 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         {
             // Update the sysex id in the sysex for our original hardware
             // tklog_debug("Inside Akai Sysex\n");
-            sysex_start = i;
             i += sizeof(AkaiSysex);
             myBuff[i] = DeviceInfoBloc[MPCOriginalId].sysexId;
             i++;
@@ -1162,16 +1166,14 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 }
 
                 // Set matrix pad cache, update if we ought to update
-                CacheForcePad(
+                pad_to_update = CacheForcePad(
                     padF,
                     myBuff[i + 1],
                     myBuff[i + 2],
                     myBuff[i + 3]);
 
-                // We completely change the sysex message
-                // so the hardware interface won't interpret it at all
-                // (because all of the updates has been made by CacheForcePad())
-                myBuff[sysex_start + 1] = 0x0F;
+                // We completely change the destination pad
+                myBuff[i] = pad_to_update;
                 i += 5; // Next msg
             }
         }
