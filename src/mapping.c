@@ -73,6 +73,7 @@ static const uint8_t MPCToForceD[] = {
     FORCEPADS_TABLE_IDX_OFFSET + 20, FORCEPADS_TABLE_IDX_OFFSET + 21, FORCEPADS_TABLE_IDX_OFFSET + 22, FORCEPADS_TABLE_IDX_OFFSET + 23,
     FORCEPADS_TABLE_IDX_OFFSET + 28, FORCEPADS_TABLE_IDX_OFFSET + 29, FORCEPADS_TABLE_IDX_OFFSET + 30, FORCEPADS_TABLE_IDX_OFFSET + 31};
 
+// Mode E is completely custom
 static const uint8_t MPCToForceE[] = {
     0, 0, 0, 0,
     0, 0, 0, 0,
@@ -92,10 +93,10 @@ static const uint8_t MPCToForceG[] = {
     FORCE_BT_COLUMN_PAD1, FORCE_BT_COLUMN_PAD2, FORCE_BT_COLUMN_PAD3, FORCE_BT_COLUMN_PAD4};
 
 static const uint8_t MPCToForceH[] = {
-    0, FORCE_BT_UP, 0, FORCE_BT_STOP_ALL,
-    FORCE_BT_LEFT, FORCE_BT_DOWN, FORCE_BT_RIGHT, 0,
-    FORCE_BT_LAUNCH_5, FORCE_BT_LAUNCH_6, FORCE_BT_LAUNCH_7, FORCE_BT_LAUNCH_8,
-    FORCE_BT_LAUNCH_1, FORCE_BT_LAUNCH_2, FORCE_BT_LAUNCH_3, FORCE_BT_LAUNCH_4};
+    FORCE_BT_LAUNCH_1, FORCE_BT_LAUNCH_5, 0 /* UP */, FORCE_BT_STOP_ALL,
+    FORCE_BT_LAUNCH_2, FORCE_BT_LAUNCH_6, 0 /* DOWN */, 0,
+    FORCE_BT_LAUNCH_3, FORCE_BT_LAUNCH_7, 0 /* PREV SEQ */, 0,
+    FORCE_BT_LAUNCH_4, FORCE_BT_LAUNCH_8, 0 /* NEXT SEQ */, 0};
 
 // Here we convert the Force pad number to MPC bank.
 static const uint8_t ForcePadNumberToMPCBank[] = {
@@ -191,7 +192,7 @@ static const uint8_t ForcePadNumberToMPCBank[] = {
     PAD_BANK_G,
 };
 
-// Now for each bank we provide a Force to MPC pad mapping
+// Now for each bank we provide a Force-to-MPC pad mapping
 static const uint8_t ForcePadNumberToMPCPadNumber[] = {
     0, 1, 2, 3, 0, 1, 2, 3,         // First line
     4, 5, 6, 7, 4, 5, 6, 7,         // 2d line
@@ -465,6 +466,8 @@ void MPCSwitchBankMode(uint8_t bank_button, bool key_down)
     {
         // If PERMANENT BANK is the same as the button that's pressed,
         // then we switch layers (permanently)
+        // NOTA: actually this doesn't make sense as A/B/C/D banks have no relation with
+        // their EFGH counterparts
         MPCSwitchMatrix(selected_bank_mask & ~permanent_mode_mask, PAD_BANK_PERMANENTLY);
     }
     else if (is_click)
@@ -1183,35 +1186,50 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         // Check if we must remap...
         else if (myBuff[i] == 0xB0)
         {
-            // if (myBuff[i + 1] != 0x35)
-            // tklog_debug("App wants to write to the Force button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
-
-            // Very specific TAP button treatment
-            if (myBuff[i + 1] == FORCE_BT_TAP_TEMPO)
-            {
-                TapStatus = myBuff[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
-                displayBatteryStatus();
-            }
-
             // Simple remapping
-            if (map_ButtonsLeds_Inv[myBuff[i + 1]] >= 0)
+            uint8_t original_button = myBuff[i + 1];
+            uint8_t target_button = map_ButtonsLeds_Inv[original_button];
+
+            if (target_button >= 0)
+                myBuff[i + 1] = target_button;
+
+            // Very specific button treatments
+            switch (original_button)
             {
-                // tklog_debug("MAP INV %d->%d\n",myBuff[i+1],map_ButtonsLeds_Inv[ myBuff[i+1] ]);
-                myBuff[i + 1] = map_ButtonsLeds_Inv[myBuff[i + 1]];
-                if (myBuff[i + 1] != 0x35)
-                {
-                    // tklog_debug("...remapped to button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
-                }
+                case FORCE_BT_TAP_TEMPO:
+                    TapStatus = myBuff[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
+                    displayBatteryStatus();
+                    break;
+
+                // Those buttons just alter the note layout,
+                // or they are simple modifiers, we keep them as yellow
+                case FORCE_BT_LAUNCH:
+                case FORCE_BT_NOTE:
+                case FORCE_BT_STEP_SEQ:
+                case FORCE_BT_SELECT:
+                case FORCE_BT_EDIT:
+                case FORCE_BT_COPY:
+                case FORCE_BT_DELETE:
+                    switch(myBuff[i + 2])
+                    {
+                        case BUTTON_COLOR_RED_LIGHT:
+                            myBuff[i + 2] = BUTTON_COLOR_YELLOW_LIGHT;
+                            break;
+                        case BUTTON_COLOR_RED:
+                            myBuff[i + 2] = BUTTON_COLOR_YELLOW;
+                            break;
+                    }
+
+                
             }
+
+            // Complex remapping (from Force *NOTE NUMBER* to pad)
+            tklog_debug("...complex remapping of button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+            // XXX SHOULD WE *ONLY* CONSIDER 0x7F OR ARE THERE NUANCES IN HERE?
+            if (myBuff[i + 2] == 0x7F)
+                SetForceMatrixButton(myBuff[i + 1], true);
             else
-            {
-                // Complex remapping (from Force *NOTE NUMBER* to pad)
-                tklog_debug("...complex remapping of button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
-                if (myBuff[i + 2] == 0x7F)
-                    SetForceMatrixButton(myBuff[i + 1], true);
-                else
-                    SetForceMatrixButton(myBuff[i + 1], false);
-            }
+                SetForceMatrixButton(myBuff[i + 1], false);
 
             // Next message
             i += 3;
