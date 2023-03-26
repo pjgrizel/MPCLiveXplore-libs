@@ -20,13 +20,13 @@
 #include <stdarg.h>
 #include <time.h>
 
-#include "mapping.h"
+#include "iamforce.h"
 #include "tkgl_mpcmapper.h"
 
 // Buttons and controls Mapping tables
 // SHIFT values have bit 7 set
-int map_ButtonsLeds[MAPPING_TABLE_SIZE];
-int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
+// int map_ButtonsLeds[MAPPING_TABLE_SIZE];
+// int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
 
 // Force Matrix pads color cache
 // static ForceMPCPadColor_t PadSysexColorsCache[256];
@@ -34,196 +34,425 @@ int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
 // static ForceMPCPadColor_t PadSysexColorsCacheBankC[16];
 // static ForceMPCPadColor_t PadSysexColorsCacheBankD[16];
 
-// Project init?
-static bool project_loaded = false;
+// Global status / Rest status
+// Initial status
+IAMForceStatus_t IAMForceStatus = {
+    .pad_layout = MPC_PAD_LAYOUT_N,
+    .force_mode = MPC_FORCE_MODE_NONE,
+    .mode_buttons = 0,
+    .tap_status = false,
+    .last_button_down = 0,
+    .started_down = {0, 0},
+    .project_loaded = false,
+};
+IAMForceStatus_t IAMForceRestStatus;
 
-// SHIFT Hold mode
-// Holding shift will activate the shift mode
-static bool shiftHoldMode = false;
-
-// To navigate in matrix when MPC spoofing a Force
-static uint8_t MPCPadMode = PAD_BANK_A;
-static uint8_t PermanentMode = PAD_BANK_A;
-static uint8_t LastKeyDownBankButton = 0;
-static uint8_t DownBankMask = 0; // Buttons that are currently down
 
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
-static const uint8_t MPCToForceA[] = {
-    FORCEPADS_TABLE_IDX_OFFSET + 32, FORCEPADS_TABLE_IDX_OFFSET + 33, FORCEPADS_TABLE_IDX_OFFSET + 34, FORCEPADS_TABLE_IDX_OFFSET + 35,
-    FORCEPADS_TABLE_IDX_OFFSET + 40, FORCEPADS_TABLE_IDX_OFFSET + 41, FORCEPADS_TABLE_IDX_OFFSET + 42, FORCEPADS_TABLE_IDX_OFFSET + 43,
-    FORCEPADS_TABLE_IDX_OFFSET + 48, FORCEPADS_TABLE_IDX_OFFSET + 49, FORCEPADS_TABLE_IDX_OFFSET + 50, FORCEPADS_TABLE_IDX_OFFSET + 51,
-    FORCEPADS_TABLE_IDX_OFFSET + 56, FORCEPADS_TABLE_IDX_OFFSET + 57, FORCEPADS_TABLE_IDX_OFFSET + 58, FORCEPADS_TABLE_IDX_OFFSET + 59};
+static MPCControlToForce_t MPCPadToForceA[] = {
+    // First line (the top line)
+    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 32,
+    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 33, 
+    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 34,
+    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 35,
+    // 0x02d line
+    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 40,
+    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 41,
+    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 42,
+    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 43,
+    // 0x03rd line
+    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 48,
+    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 49,
+    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 50,
+    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 51,
+    // 0x04th line
+    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 56,
+    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 57,
+    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 58,
+    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 59
+};
 
-static const uint8_t MPCToForceB[] = {
-    FORCEPADS_TABLE_IDX_OFFSET + 36, FORCEPADS_TABLE_IDX_OFFSET + 37, FORCEPADS_TABLE_IDX_OFFSET + 38, FORCEPADS_TABLE_IDX_OFFSET + 39,
-    FORCEPADS_TABLE_IDX_OFFSET + 44, FORCEPADS_TABLE_IDX_OFFSET + 45, FORCEPADS_TABLE_IDX_OFFSET + 46, FORCEPADS_TABLE_IDX_OFFSET + 47,
-    FORCEPADS_TABLE_IDX_OFFSET + 52, FORCEPADS_TABLE_IDX_OFFSET + 53, FORCEPADS_TABLE_IDX_OFFSET + 54, FORCEPADS_TABLE_IDX_OFFSET + 55,
-    FORCEPADS_TABLE_IDX_OFFSET + 60, FORCEPADS_TABLE_IDX_OFFSET + 61, FORCEPADS_TABLE_IDX_OFFSET + 62, FORCEPADS_TABLE_IDX_OFFSET + 63};
+static MPCControlToForce_t MPCPadToForceB[] = {
+    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 36,
+    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 37,
+    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 38,
+    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 39,
+    // 0x02d line
+    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 44,
+    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 45,
+    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 46,
+    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 47,
+    // 0x03rd line
+    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 52,
+    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 53,
+    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 54,
+    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 55,
+    // 0x04th line
+    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 60,
+    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 61,
+    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 62,
+    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 63
+};
 
-static const uint8_t MPCToForceC[] = {
-    FORCEPADS_TABLE_IDX_OFFSET + 0, FORCEPADS_TABLE_IDX_OFFSET + 1, FORCEPADS_TABLE_IDX_OFFSET + 2, FORCEPADS_TABLE_IDX_OFFSET + 3,
-    FORCEPADS_TABLE_IDX_OFFSET + 8, FORCEPADS_TABLE_IDX_OFFSET + 9, FORCEPADS_TABLE_IDX_OFFSET + 10, FORCEPADS_TABLE_IDX_OFFSET + 11,
-    FORCEPADS_TABLE_IDX_OFFSET + 16, FORCEPADS_TABLE_IDX_OFFSET + 17, FORCEPADS_TABLE_IDX_OFFSET + 18, FORCEPADS_TABLE_IDX_OFFSET + 19,
-    FORCEPADS_TABLE_IDX_OFFSET + 24, FORCEPADS_TABLE_IDX_OFFSET + 25, FORCEPADS_TABLE_IDX_OFFSET + 26, FORCEPADS_TABLE_IDX_OFFSET + 27};
+static MPCControlToForce_t MPCPadToForceC[] = {
+    // 0x01st line
+    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 0,
+    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 1,
+    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 2,
+    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 3,
+    // 0x02d line
+    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 8,
+    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 9,
+    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 10,
+    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 11,
+    // 0x03rd line
+    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 16,
+    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 17,
+    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 18,
+    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 19,
+    // 0x04th line
+    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 24,
+    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 25,
+    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 26,
+    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 27
+};
 
-static const uint8_t MPCToForceD[] = {
-    FORCEPADS_TABLE_IDX_OFFSET + 4, FORCEPADS_TABLE_IDX_OFFSET + 5, FORCEPADS_TABLE_IDX_OFFSET + 6, FORCEPADS_TABLE_IDX_OFFSET + 7,
-    FORCEPADS_TABLE_IDX_OFFSET + 12, FORCEPADS_TABLE_IDX_OFFSET + 13, FORCEPADS_TABLE_IDX_OFFSET + 14, FORCEPADS_TABLE_IDX_OFFSET + 15,
-    FORCEPADS_TABLE_IDX_OFFSET + 20, FORCEPADS_TABLE_IDX_OFFSET + 21, FORCEPADS_TABLE_IDX_OFFSET + 22, FORCEPADS_TABLE_IDX_OFFSET + 23,
-    FORCEPADS_TABLE_IDX_OFFSET + 28, FORCEPADS_TABLE_IDX_OFFSET + 29, FORCEPADS_TABLE_IDX_OFFSET + 30, FORCEPADS_TABLE_IDX_OFFSET + 31};
+static MPCControlToForce_t MPCPadToForceD[] = {
+    // 0x01st line
+    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 4,
+    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 5,
+    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 6,
+    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 7,
+    // 0x02d line
+    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 12,
+    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 13,
+    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 14,
+    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 15,
+    // 0x03rd line
+    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 20,
+    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 21,
+    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 22,
+    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 23,
+    // 0x04th line
+    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 28,
+    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 29,
+    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 30,
+    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 31
+};
 
 // Mode E is completely custom
-static const uint8_t MPCToForceE[] = {
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0};
+static MPCControlToForce_t MPCPadToForceE[] = {
+    // 1st line
+    [0x00].type = CT_CUS, [0x00].callback = cb_mode_e,
+    [0x01].type = CT_CUS, [0x01].callback = cb_mode_e,
+    [0x02].type = CT_BTN, [0x02].callback = cb_mode_e, [0x2].number = FORCE_BT_LAUNCH,
+    [0x03].type = CT_BTN, [0x03].callback = cb_mode_e, [3].number = FORCE_BT_LAUNCH,
+    // 0x2d line
+    [0x04].type = CT_CUS, [0x04].callback = cb_mode_e,
+    [0x05].type = CT_CUS, [0x05].callback = cb_mode_e,
+    [0x06].type = CT_CUS, [0x06].callback = cb_mode_e, [6].number = FORCE_BT_LAUNCH,
+    [0x07].type = CT_CUS, [0x07].callback = cb_mode_e, [7].number = FORCE_BT_LAUNCH,
+    // 3rd line
+    [0x08].type = CT_CUS, [0x08].callback = cb_mode_e, [8].number = FORCE_BT_STEP_SEQ,
+    [0x09].type = CT_CUS, [0x09].callback = cb_mode_e, [9].number = FORCE_BT_STEP_SEQ,
+    [0x0a].type = CT_CUS, [0x0a].callback = cb_mode_e, [10].number = FORCE_BT_NOTE,
+    [0x0b].type = CT_CUS, [0x0b].callback = cb_mode_e, [11].number = FORCE_BT_NOTE,
+    // 4th line
+    [0x0c].type = CT_CUS, [0x0c].callback = cb_mode_e, [12].number = FORCE_BT_STEP_SEQ,
+    [0x0d].type = CT_CUS, [0x0d].callback = cb_mode_e, [0x0d].number = FORCE_BT_STEP_SEQ,
+    [0x0e].type = CT_CUS, [0x0e].callback = cb_mode_e, [0x0e].number = FORCE_BT_NOTE,
+    [0x0f].type = CT_CUS, [0x0f].callback = cb_mode_e, [0x0f].number = FORCE_BT_NOTE
+};
 
-static const uint8_t MPCToForceF[] = {
+
+static const uint8_t MPCPadToForceF[] = {
     0, FORCE_BT_ASSIGN_A, FORCE_BT_ASSIGN_B, FORCE_BT_MASTER,
     FORCE_BT_MUTE, FORCE_BT_SOLO, FORCE_BT_REC_ARM, FORCE_BT_CLIP_STOP,
     FORCE_BT_MUTE_PAD5, FORCE_BT_MUTE_PAD6, FORCE_BT_MUTE_PAD7, FORCE_BT_MUTE_PAD8,
     FORCE_BT_MUTE_PAD1, FORCE_BT_MUTE_PAD2, FORCE_BT_MUTE_PAD3, FORCE_BT_MUTE_PAD4};
 
-static const uint8_t MPCToForceG[] = {
+static const uint8_t MPCPadToForceG[] = {
     0, FORCE_BT_UP, 0, 0,
     FORCE_BT_LEFT, FORCE_BT_DOWN, FORCE_BT_RIGHT, 0,
     FORCE_BT_COLUMN_PAD5, FORCE_BT_COLUMN_PAD6, FORCE_BT_COLUMN_PAD7, FORCE_BT_COLUMN_PAD8,
     FORCE_BT_COLUMN_PAD1, FORCE_BT_COLUMN_PAD2, FORCE_BT_COLUMN_PAD3, FORCE_BT_COLUMN_PAD4};
 
-static const uint8_t MPCToForceH[] = {
+static const uint8_t MPCPadToForceH[] = {
     FORCE_BT_LAUNCH_1, FORCE_BT_LAUNCH_5, 0 /* UP */, FORCE_BT_STOP_ALL,
     FORCE_BT_LAUNCH_2, FORCE_BT_LAUNCH_6, 0 /* DOWN */, 0,
     FORCE_BT_LAUNCH_3, FORCE_BT_LAUNCH_7, 0 /* PREV SEQ */, 0,
-    FORCE_BT_LAUNCH_4, FORCE_BT_LAUNCH_8, 0 /* NEXT SEQ */, 0};
-
-// Here we convert the Force pad number to MPC bank.
-static const uint8_t ForcePadNumberToMPCBank[] = {
-    // Line
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    // Line
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    // Line
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    // Line
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_C,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    PAD_BANK_D,
-    // Line
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    // Line
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    // Line
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    // Line
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_A,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    PAD_BANK_B,
-    // Line 9 (mute modes)
-    PAD_BANK_F,
-    PAD_BANK_F,
-    PAD_BANK_F,
-    PAD_BANK_F,
-    PAD_BANK_F,
-    PAD_BANK_F,
-    PAD_BANK_F,
-    PAD_BANK_F,
-    // Line 10 (track select)
-    PAD_BANK_G,
-    PAD_BANK_G,
-    PAD_BANK_G,
-    PAD_BANK_G,
-    PAD_BANK_G,
-    PAD_BANK_G,
-    PAD_BANK_G,
-    PAD_BANK_G,
+    FORCE_BT_LAUNCH_4, FORCE_BT_LAUNCH_8, 0 /* NEXT SEQ */, 0
 };
 
-// Now for each bank we provide a Force-to-MPC pad mapping
-static const uint8_t ForcePadNumberToMPCPadNumber[] = {
-    0, 1, 2, 3, 0, 1, 2, 3,         // First line
-    4, 5, 6, 7, 4, 5, 6, 7,         // 2d line
-    8, 9, 10, 11, 8, 9, 10, 11,     // 3d line
-    12, 13, 14, 15, 12, 13, 14, 15, // 4th line, etc
-    0, 1, 2, 3, 0, 1, 2, 3,         // First line
-    4, 5, 6, 7, 4, 5, 6, 7,         // 2d line
-    8, 9, 10, 11, 8, 9, 10, 11,     // 3d line
-    12, 13, 14, 15, 12, 13, 14, 15, // 4th line, etc
-    12, 13, 14, 15, 8, 9, 10, 11,   // Line 8 = mute modes
-    12, 13, 14, 15, 8, 9, 10, 11    // Line 9 = track selection
+// ...and this is the X-fader (to be done)
+static MPCControlToForce_t MPCPadToForceX[] = {
 };
+
+// Buttons mapping
+static const MPCControlToForce_t MPCButtonToForce[] = {
+    [LIVEII_BT_ENCODER].type = CT_BTN, [LIVEII_BT_ENCODER].number = FORCE_BT_ENCODER
+};
+
+// Create an array that references all the above arrays
+static MPCControlToForce_t *MPCPadToForce_a[] = {
+    MPCPadToForceA, MPCPadToForceB, MPCPadToForceC, MPCPadToForceD, MPCPadToForceE
+};
+
+
+
+// Ok, now we need a data structure to store the other way around.
+// The thing is, ONE Force pad/button can be mapped to several MPC pads.
+// (although the general case is 1 == 1).
+// We could use malloc() and a linked list, but we find it more convenient
+// to handle that in a static array. The memory footprint would be
+// something like 128 * 8 bytes (roughly) = 1Kb which is not such a big deal.
+static ForceControlToMPC_t ForcePadToMPC[CONTROL_TABLE_SIZE];
+static ForceControlToMPC_t ForceButtonToMPC[CONTROL_TABLE_SIZE];
+static ForceControlToMPC_t ForceExtraToMPC[CONTROL_TABLE_SIZE];
+static uint8_t ForceExtraToMPCNext = 0;     // Next available index
 
 // These are the matrices where actual RGB values are stored
 // They are initialized at start time and populated in the Write function
-static ForceMPCPadColor_t MPCPadValuesA[16];
-static ForceMPCPadColor_t MPCPadValuesB[16];
-static ForceMPCPadColor_t MPCPadValuesC[16];
-static ForceMPCPadColor_t MPCPadValuesD[16];
-static ForceMPCPadColor_t MPCPadValuesE[16];
-static ForceMPCPadColor_t MPCPadValuesF[16];
-static ForceMPCPadColor_t MPCPadValuesG[16];
-static ForceMPCPadColor_t MPCPadValuesH[16];
+// And they are given with their index
+// Use MPC_PAD_LAYOUT_* variables to address a specific array
+static ForceMPCPadColor_t MPCPadValues[MPC_PAD_LAYOUT_N][16];
 
-// We keep the TAP value here to allow for a synchronized 'flash' effect
-// when battery is charging
-static bool TapStatus = false;
+// To store an rgb value, we do the following:
+// MPCPAdValues[bank][pad].r = 0x00;
 
-// Create a button press timer: we keep track of how long a BANK button was key_down
-// and if it was key_down for more than 1 second, we switch to the next bank
-static struct timespec started_down;
+// MPCPadToForceA will be converted to sth like this during startup:
+// XForcePadToMPC[] = {
+//     // Pad0 => bank A, pad 0
+//     [0x00].type = CT_PAD, [0x00].bank=MPC_PAD_VALUES_BANK_A, [0x00].number=0,
+//     // etc
+// };
+
+void invertMPCToForceMapping()
+{
+    // Various variables helping us
+    size_t n_MPCPadToForce_a = sizeof(MPCPadToForce_a)/sizeof(MPCPadToForce_a[0]);
+    ForceControlToMPC_t _empty = {0, NULL, 0, NULL, NULL};
+
+   // Initialize global mapping tables to 0 (just in case)
+    for (int i = 0; i < CONTROL_TABLE_SIZE; i++)
+    {
+        ForcePadToMPC[i] = _empty;
+        ForceButtonToMPC[i] = _empty;
+        ForceExtraToMPC[i] = _empty;
+    }
+
+    // Iterate over all MPCPadToForce_a arrays
+    for (uint8_t i=0 ; i <  n_MPCPadToForce_a ; i++)
+    {
+        // Iterate over all elements of the mapping
+        for (uint8_t j=0 ; j < 16 ; j++)
+        {
+            // Get the current element
+            MPCControlToForce_t mapping = MPCPadToForce_a[i][j];
+            uint8_t mapping_type = mapping.type;
+
+            // Handle multiple controls mapping to a single element
+            // If there's already a mapping for this element, we need to
+            // create an extra one!
+            switch (ForcePadToMPC[mapping.number].type)
+            {
+                case CT_NONE:
+                case CT_CUS:
+                    break;
+                case CT_PAD:
+                    ForcePadToMPC[mapping.number].next_control = &ForceExtraToMPC[ForceExtraToMPCNext];
+                    mapping_type = CT_EXTRA;
+                    break;
+                case CT_BTN:
+                    ForceButtonToMPC[mapping.number].next_control = &ForceExtraToMPC[ForceExtraToMPCNext];
+                    mapping_type = CT_EXTRA;
+                    break;
+                default:
+                    tklog_error("Unexpected type in ForceButtonToMPC[%d].type = %d", mapping.number, ForcePadToMPC[mapping.number].type);
+                    break;
+            }
+
+            // If the current element is a pad
+            switch(mapping_type)
+            {
+                case CT_NONE:
+                case CT_CUS:        // Custom controls are 1-way mappings
+                    break;
+
+                case CT_PAD:
+                    ForcePadToMPC[mapping.number].type = mapping.type;
+                    ForcePadToMPC[mapping.number].bank = i;
+                    ForcePadToMPC[mapping.number].number = j;   // XXX IS THIS WRONG?? (remap this to a real Force number)
+                    ForcePadToMPC[mapping.number].callback = mapping.callback;
+                    break;
+
+                case CT_BTN:
+                    ForceButtonToMPC[mapping.number].type = mapping.type;
+                    ForceButtonToMPC[mapping.number].bank = i;
+                    ForceButtonToMPC[mapping.number].number = j;
+                    ForceButtonToMPC[mapping.number].callback = mapping.callback;
+                    break;
+
+                case CT_EXTRA:
+                    ForceExtraToMPC[ForceExtraToMPCNext].type = mapping.type;
+                    ForceExtraToMPC[ForceExtraToMPCNext].bank = i;
+                    ForceExtraToMPC[ForceExtraToMPCNext].number = j;
+                    ForceExtraToMPC[ForceExtraToMPCNext].callback = mapping.callback;
+                    ForceExtraToMPCNext++;
+                    break;
+
+                default:
+                    tklog_error("Unexpected type in MPCPadToForce_a[%d][%d].type = %d");
+                    break;
+            }
+        }
+    }
+}
+
+
+/**************************************************************************
+ *                                                                        *
+ *  Callbacks                                                             *
+ *                                                                        *
+ **************************************************************************/
+
+void cb_tap(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+{
+    // The tools of the trade
+    int fd;
+    uint8_t capacity = 0;
+    uint8_t blink = 0;
+    uint8_t other_leds = 0x01;
+    char buffer[16];
+    char intBuffer[4];
+    uint8_t battery_status;
+    ssize_t bytesRead;
+    uint8_t scale;
+
+    // If buffer is too small, we can't do much about it
+    if (buffer_size < 3)
+    {
+        tklog_error("Buffer too small for tap callback");
+        return;
+    }
+
+    // Store status
+    IAMForceStatus.tap_status = buffer[2] == BUTTON_COLOR_RED_LIGHT ? false : true;
+
+    // Once every 10 taps, update battery light
+    if (IAMForceStatus.tap_counter == 0)
+    {
+        // Read battery_ value from fp capacity
+        // Convert the string to an integer
+        fd = orig_open64(POWER_SUPPLY_CAPACITY_PATH, O_RDONLY);
+        bytesRead = read(fd, buffer, 6);
+        orig_close(fd);
+        memcpy(intBuffer, buffer, 3);
+        intBuffer[bytesRead] = '\0';
+        capacity = atoi(intBuffer);
+        scale = capacity * 8 / 100;
+
+        // Read battery status from POWER_SUPPLY_STATUS_PATH
+        // If it's "Charging", we display a charging icon (kind of)
+        fd = orig_open64(POWER_SUPPLY_STATUS_PATH, O_RDONLY);
+        bytesRead = read(fd, buffer, 9);
+        orig_close(fd);
+        buffer[bytesRead] = '\0';
+        if (strcmp(buffer, "Charging\n") == 0)
+        {
+            battery_status = BATTERY_CHARGING;
+            other_leds = 0x02;
+        }
+        else if (strcmp(buffer, "Full\n") == 0)
+        {
+            battery_status = BATTERY_FULL;
+            other_leds = 0x02;
+        }
+
+        // If battery is currently charging, we make the last light blink
+        // by decreasing the scale by 1
+        if (battery_status == BATTERY_CHARGING && !IAMForceStatus.tap_status && scale > 0)
+            blink = 1;
+
+        // Reset lights
+        uint8_t light_1[] = {0xB0, 0x5A, 0x00};
+        uint8_t light_2[] = {0xB0, 0x5B, 0x00};
+        uint8_t light_3[] = {0xB0, 0x5C, 0x00};
+        uint8_t light_4[] = {0xB0, 0x5D, 0x00};
+
+        // Handle 'current' light
+        switch (scale)
+        {
+        case 0:
+            break;
+        case 1:
+            light_1[2] = 0x01 - blink;
+            break;
+        case 2:
+            light_1[2] = 0x02 - blink;
+            break;
+        case 3:
+            light_1[2] = other_leds;
+            light_2[2] = 0x01 - blink;
+            break;
+        case 4:
+            light_1[2] = other_leds;
+            light_2[2] = 0x02 - blink;
+            break;
+        case 5:
+            light_1[2] = other_leds;
+            light_2[2] = other_leds;
+            light_3[2] = 0x01 - blink;
+            break;
+        case 6:
+            light_1[2] = other_leds;
+            light_2[2] = other_leds;
+            light_3[2] = 0x02 - blink;
+            break;
+        case 7:
+            light_1[2] = other_leds;
+            light_2[2] = other_leds;
+            light_3[2] = other_leds;
+            light_4[2] = 0x01 - blink;
+            break;
+        case 8:
+            light_1[2] = other_leds;
+            light_2[2] = other_leds;
+            light_3[2] = other_leds;
+            light_4[2] = 0x02 - blink;
+            break;
+        }
+
+        // Let's write it to the private ports
+        if (
+            IAMForceStatus.battery_status != battery_status 
+            || IAMForceStatus.battery_capacity != capacity)
+        {
+            // Update lights
+            orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
+            orig_snd_rawmidi_write(rawvirt_outpriv, light_2, sizeof(light_2));
+            orig_snd_rawmidi_write(rawvirt_outpriv, light_3, sizeof(light_3));
+            orig_snd_rawmidi_write(rawvirt_outpriv, light_4, sizeof(light_4));
+
+            // Store current status
+            IAMForceStatus.battery_status = battery_status;
+            IAMForceStatus.battery_capacity = capacity;
+        }
+    }
+
+    // Handle counter
+    IAMForceStatus.tap_counter++;
+    if (IAMForceStatus.tap_counter == BATTERY_CHECK_INTERVAL)
+        IAMForceStatus.tap_counter = 0;
+}
+
+
+/**************************************************************************
+ *                                                                        *
+ *  Core functions                                                        *
+ *                                                                        *
+ **************************************************************************/
 
 ///////////////////////////////////////////////////////////////////////////////
 // (fake) load mapping tables from config file
@@ -231,11 +460,7 @@ static struct timespec started_down;
 void LoadMapping()
 {
     // Initialize global mapping tables
-    for (int i = 0; i < MAPPING_TABLE_SIZE; i++)
-    {
-        map_ButtonsLeds[i] = -1;
-        map_ButtonsLeds_Inv[i] = -1;
-    }
+    invertMPCToForceMapping();
 
     // Hardcoded mapping file (it's 'Force Button => LiveII Button')
     map_ButtonsLeds[LIVEII_BT_ENCODER] = FORCE_BT_ENCODER;
@@ -269,51 +494,21 @@ void LoadMapping()
     map_ButtonsLeds[LIVEII_BT_COPY] = FORCE_BT_SAVE;
     map_ButtonsLeds[LIVEII_BT_STEP_SEQ] = FORCE_BT_NAVIGATE;
 
-    // Construct the inverted mapping table
-    for (int i = 0; i < MAPPING_TABLE_SIZE; i++)
-    {
-        if (map_ButtonsLeds[i] >= 0)
-            map_ButtonsLeds_Inv[map_ButtonsLeds[i]] = i;
-    }
-
     // Initialize all pads caches (at load-time, we consider they are black)
-    // for (int i = 0; i < 256; i++)
-    // {
-    //     PadSysexColorsCache[i].r = 0x00;
-    //     PadSysexColorsCache[i].g = 0x7f;
-    //     PadSysexColorsCache[i].b = 0x00;
-    // }
-    for (int i = 0; i < 16; i++)
+    for (int i = 0 ; i < MPC_PAD_LAYOUT_N ; i++)
     {
-        MPCPadValuesA[i].r = 0x00;
-        MPCPadValuesA[i].g = 0x00;
-        MPCPadValuesA[i].b = 0x00;
-        MPCPadValuesB[i].r = 0x00;
-        MPCPadValuesB[i].g = 0x00;
-        MPCPadValuesB[i].b = 0x00;
-        MPCPadValuesC[i].r = 0x00;
-        MPCPadValuesC[i].g = 0x00;
-        MPCPadValuesC[i].b = 0x00;
-        MPCPadValuesD[i].r = 0x00;
-        MPCPadValuesD[i].g = 0x00;
-        MPCPadValuesD[i].b = 0x00;
-        MPCPadValuesE[i].r = 0x00;
-        MPCPadValuesE[i].g = 0x00;
-        MPCPadValuesE[i].b = 0x00;
-        MPCPadValuesF[i].r = 0x00;
-        MPCPadValuesF[i].g = 0x00;
-        MPCPadValuesF[i].b = 0x00;
-        MPCPadValuesG[i].r = 0x00;
-        MPCPadValuesG[i].g = 0x00;
-        MPCPadValuesG[i].b = 0x00;
-        MPCPadValuesH[i].r = 0x00;
-        MPCPadValuesH[i].g = 0x00;
-        MPCPadValuesH[i].b = 0x00;
+        for (int j = 0 ; j < 16 ; j++)
+        {
+            MPCPadValues[i][j].r = 0x00;
+            MPCPadValues[i][j].g = 0x00;
+            MPCPadValues[i][j].b = 0x00;
+        }
     }
 
-    // Initialize timer
-    clock_gettime(CLOCK_MONOTONIC_RAW, &started_down);
+    // Initialize additional MPC status data
+    clock_gettime(CLOCK_MONOTONIC_RAW, &IAMForceStatus.started_button_down);
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Prepare a fake midi message in the Private midi context
@@ -686,7 +881,7 @@ void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
     // We look into each matrix becaue one button could be present several times!
     for (u_int8_t i = 0; i < 16; i++)
     {
-        if (MPCToForceF[i] == force_pad_note_number)
+        if (MPCPadToForceF[i] == force_pad_note_number)
         {
             // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
             // tklog_debug("   -> found pad %02x in matrix B\n", i);
@@ -705,7 +900,7 @@ void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
             if (MPCPadMode == PAD_BANK_F)
                 DrawMatrixPadFromCache(PAD_BANK_F, i);
         }
-        if (MPCToForceG[i] == force_pad_note_number)
+        if (MPCPadToForceG[i] == force_pad_note_number)
         {
             // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
             // tklog_debug("   -> found pad %02x in matrix C\n", i);
@@ -724,7 +919,7 @@ void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
             if (MPCPadMode == PAD_BANK_G)
                 DrawMatrixPadFromCache(PAD_BANK_G, i);
         }
-        if (MPCToForceH[i] == force_pad_note_number)
+        if (MPCPadToForceH[i] == force_pad_note_number)
         {
             // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
             // tklog_debug("   -> found pad %02x in matrix D\n", i);
@@ -1054,16 +1249,16 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             switch (MPCPadMode)
             {
             case PAD_BANK_A:
-                myBuff[i + 1] = MPCToForceA[pad_number];
+                myBuff[i + 1] = MPCPadToForceA[pad_number];
                 break;
             case PAD_BANK_B:
-                myBuff[i + 1] = MPCToForceB[pad_number];
+                myBuff[i + 1] = MPCPadToForceB[pad_number];
                 break;
             case PAD_BANK_C:
-                myBuff[i + 1] = MPCToForceC[pad_number];
+                myBuff[i + 1] = MPCPadToForceC[pad_number];
                 break;
             case PAD_BANK_D:
-                myBuff[i + 1] = MPCToForceD[pad_number];
+                myBuff[i + 1] = MPCPadToForceD[pad_number];
                 break;
 
             default:
@@ -1083,26 +1278,26 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 {
                 case PAD_BANK_E:
                     myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCToForceE[pad_number];
+                    myBuff[i + 1] = MPCPadToForceE[pad_number];
                     myBuff[i] = 0x90;
                     break;
                 case PAD_BANK_F:
                     tklog_debug("...converting input %02x %02x %02x ...\n",
                                 myBuff[i], myBuff[i + 1], myBuff[i + 2]);
                     myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCToForceF[pad_number];
+                    myBuff[i + 1] = MPCPadToForceF[pad_number];
                     myBuff[i] = 0x90;
                     tklog_debug("......to %02x %02x %02x\n",
                                 myBuff[i], myBuff[i + 1], myBuff[i + 2]);
                     break;
                 case PAD_BANK_G:
                     myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCToForceG[pad_number];
+                    myBuff[i + 1] = MPCPadToForceG[pad_number];
                     myBuff[i] = 0x90;
                     break;
                 case PAD_BANK_H:
                     myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCToForceH[pad_number];
+                    myBuff[i + 1] = MPCPadToForceH[pad_number];
                     myBuff[i] = 0x90;
                     break;
                 }
@@ -1131,7 +1326,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 {
     uint8_t *myBuff = (uint8_t *)midiBuffer;
     size_t i = 0;
-    uint8_t pad_to_update=0x00;
+    uint8_t pad_to_update = 0x00;
 
     while (i < size)
     {
@@ -1196,31 +1391,29 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             // Very specific button treatments
             switch (original_button)
             {
-                case FORCE_BT_TAP_TEMPO:
-                    TapStatus = myBuff[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
-                    displayBatteryStatus();
+            case FORCE_BT_TAP_TEMPO:
+                TapStatus = myBuff[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
+                displayBatteryStatus();
+                break;
+
+            // Those buttons just alter the note layout,
+            // or they are simple modifiers, we keep them as yellow
+            case FORCE_BT_LAUNCH:
+            case FORCE_BT_NOTE:
+            case FORCE_BT_STEP_SEQ:
+            case FORCE_BT_SELECT:
+            case FORCE_BT_EDIT:
+            case FORCE_BT_COPY:
+            case FORCE_BT_DELETE:
+                switch (myBuff[i + 2])
+                {
+                case BUTTON_COLOR_RED_LIGHT:
+                    myBuff[i + 2] = BUTTON_COLOR_YELLOW_LIGHT;
                     break;
-
-                // Those buttons just alter the note layout,
-                // or they are simple modifiers, we keep them as yellow
-                case FORCE_BT_LAUNCH:
-                case FORCE_BT_NOTE:
-                case FORCE_BT_STEP_SEQ:
-                case FORCE_BT_SELECT:
-                case FORCE_BT_EDIT:
-                case FORCE_BT_COPY:
-                case FORCE_BT_DELETE:
-                    switch(myBuff[i + 2])
-                    {
-                        case BUTTON_COLOR_RED_LIGHT:
-                            myBuff[i + 2] = BUTTON_COLOR_YELLOW_LIGHT;
-                            break;
-                        case BUTTON_COLOR_RED:
-                            myBuff[i + 2] = BUTTON_COLOR_YELLOW;
-                            break;
-                    }
-
-                
+                case BUTTON_COLOR_RED:
+                    myBuff[i + 2] = BUTTON_COLOR_YELLOW;
+                    break;
+                }
             }
 
             // Complex remapping (from Force *NOTE NUMBER* to pad)
@@ -1240,105 +1433,3 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
     }
 }
 
-// Lightbulb, anyone?
-// This is triggered every time we update the "TAP" button!
-void displayBatteryStatus()
-{
-    // We start by opening the capacity file
-    int fd;
-    int battery_;
-    bool is_charging = false;
-    uint8_t blink = 0;
-    uint8_t other_leds = 0x01;
-    char buffer[16];
-    char intBuffer[4];
-    ssize_t bytesRead;
-    uint8_t scale;
-
-    // Read battery_ value from fp capacity
-    // Convert the string to an integer
-    fd = orig_open64(POWER_SUPPLY_CAPACITY_PATH, O_RDONLY);
-    bytesRead = read(fd, buffer, 6);
-    orig_close(fd);
-    memcpy(intBuffer, buffer, 3);
-    intBuffer[bytesRead] = '\0';
-    battery_ = atoi(intBuffer);
-    scale = battery_ * 8 / 100;
-
-    // Read battery status from POWER_SUPPLY_STATUS_PATH
-    // If it's "Charging", we display a charging icon (kind of)
-    fd = orig_open64(POWER_SUPPLY_STATUS_PATH, O_RDONLY);
-    bytesRead = read(fd, buffer, 9);
-    orig_close(fd);
-    buffer[bytesRead] = '\0';
-    if (strcmp(buffer, "Charging\n") == 0)
-    {
-        is_charging = true;
-        other_leds = 0x02;
-    }
-    else if (strcmp(buffer, "Full\n") == 0)
-    {
-        is_charging = false;
-        other_leds = 0x02;
-    }
-
-    // If battery is currently charging, we make the last light blink
-    // by decreasing the scale by 1
-    if (is_charging && !TapStatus && scale > 0)
-        blink = 1;
-
-    // Reset lights
-    uint8_t light_1[] = {0xB0, 0x5A, 0x00};
-    uint8_t light_2[] = {0xB0, 0x5B, 0x00};
-    uint8_t light_3[] = {0xB0, 0x5C, 0x00};
-    uint8_t light_4[] = {0xB0, 0x5D, 0x00};
-
-    // Handle 'current' light
-    switch (scale)
-    {
-    case 0:
-        break;
-    case 1:
-        light_1[2] = 0x01 - blink;
-        break;
-    case 2:
-        light_1[2] = 0x02 - blink;
-        break;
-    case 3:
-        light_1[2] = other_leds;
-        light_2[2] = 0x01 - blink;
-        break;
-    case 4:
-        light_1[2] = other_leds;
-        light_2[2] = 0x02 - blink;
-        break;
-    case 5:
-        light_1[2] = other_leds;
-        light_2[2] = other_leds;
-        light_3[2] = 0x01 - blink;
-        break;
-    case 6:
-        light_1[2] = other_leds;
-        light_2[2] = other_leds;
-        light_3[2] = 0x02 - blink;
-        break;
-    case 7:
-        light_1[2] = other_leds;
-        light_2[2] = other_leds;
-        light_3[2] = other_leds;
-        light_4[2] = 0x01 - blink;
-        break;
-    case 8:
-        light_1[2] = other_leds;
-        light_2[2] = other_leds;
-        light_3[2] = other_leds;
-        light_4[2] = 0x02 - blink;
-        break;
-    }
-
-    // Let's write it to the private ports
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_2, sizeof(light_2));
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_3, sizeof(light_3));
-    orig_snd_rawmidi_write(rawvirt_outpriv, light_4, sizeof(light_4));
-}

@@ -55,7 +55,7 @@ your own midi mapping to input and output midi messages.
 #include <time.h>
 
 #include "tkgl_mpcmapper.h"
-#include "mapping.h"
+#include "iamforce.h"
 
 // Log utilities ---------------------------------------------------------------
 

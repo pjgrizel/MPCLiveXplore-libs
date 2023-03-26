@@ -29,6 +29,100 @@ typedef struct
     uint8_t b;
 } ForceMPCPadColor_t;
 
+// Force pads structure
+#define CONTROL_TABLE_SIZE 128          // We consider we can't have more than 128 controls
+                                        // Which is consistant with MIDI specs for note numbers
+
+// The table map an MPC control to a FORCE control.
+// Control type can be: BUTTON, PAD or CUSTOM
+// We'll use this to construct the opposite table
+#define CT_NONE 0 // Nothing there
+#define CT_BTN 1 // Button
+#define CT_PAD 2 // Pad
+#define CT_CUS 3 // Custom
+#define CT_EXTRA 4 // Extra
+typedef struct MPCControlToForce_t
+{
+    uint8_t type;   // Either BTN, PAD or CUS
+    uint8_t number;
+    // pointer to a callback function taking a pointer to the message data as input.
+    // mpc_to_force indicates if we're remapping from MPC to Force or Force To MPC
+    void (*callback)(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size);
+} MPCControlToForce_t;
+
+#define BATTERY_CHARGING 0x00
+#define BATTERY_CHARGED 0x01
+#define BATTERY_DISCHARGING 0x02
+#define BATTERY_NOT_CHARGING 0x03
+#define BATTERY_FULL 0x04
+
+// Ok, now we are talking about the reverse mode: how a Force control
+// maps to an MPC control. It's not a bijection!
+typedef struct ForceControlToMPC_t
+{
+    uint8_t type;                       // Destination is either BTN, PAD or CUS
+    uint8_t bank;                       // ...only if 'PAD'
+    uint8_t number;                     // If PAD, will be the pad number ; if BTN, will be note number ; if CUS, user-defined value
+    void (*callback)(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size);
+    ForceControlToMPC_t *next_control;  // allow easy chaining of controls
+} ForceControlToMPC_t;
+
+// The things we display on the pads
+// NOTA: KEEP THESE SEQUENITAL, they're going to be used as indexes
+#define MPC_PAD_LAYOUT_N            9
+#define MPC_PAD_LAYOUT_MODE         0x00
+#define MPC_PAD_LAYOUT_SCENE        0x01
+#define MPC_PAD_LAYOUT_MUTE         0x02
+#define MPC_PAD_LAYOUT_COLS         0x03
+#define MPC_PAD_LAYOUT_XFDR         0x04
+#define MPC_PAD_LAYOUT_BANK_A       0x05
+#define MPC_PAD_LAYOUT_BANK_B       0x06
+#define MPC_PAD_LAYOUT_BANK_C       0x07
+#define MPC_PAD_LAYOUT_BANK_D       0x08
+
+// Bank buttons states.
+#define MODE_BUTTONS_TOP_MODE       0x01     // If this bit is 1, then the top row is yellow
+#define MODE_BUTTONS_TOP_LOCK       0x03     // If this bit is 1, then the top row is locked
+#define MODE_BUTTONS_BOTTOM_MODE    0x04     // If this bit is 1, then the bottom row is yellow
+#define MODE_BUTTONS_BOTTOM_LOCK    0x0c     // If this bit is 1, then the bottom row is locked
+
+// The Force mode we could be in. The LED on the MODE button of the Force
+// will indicate the current mode.
+#define MPC_FORCE_MODE_NONE         0x00
+#define MPC_FORCE_MODE_LAUNCH       0x01
+#define MPC_FORCE_MODE_STEPSEQ      0x02
+#define MPC_FORCE_MODE_NOTE         0x03
+
+// Expression of the MPC state
+typedef struct IAMForceStatus_t
+{
+    uint8_t pad_layout;         // The mode layout we're in (MPC_PAD_LAYOUT_*)
+    uint8_t force_mode;         // The FORCE mode (MPC_FORCE_MODE_*)
+    uint8_t mode_buttons;       // The behaviour of mode buttons (MODE_BUTTONS_*)
+
+    // We keep the TAP value in memory (useful for flashing effects)
+    bool tap_status;
+    uint8_t tap_counter;
+    uint8_t battery_status;
+    uint8_t battery_capacity;
+
+    // Other parameters
+    bool project_loaded;
+    bool shift_hold;
+
+    // This is how we handle "clicks" and "double clicks"
+    uint8_t last_button_down;
+    struct timespec started_button_down;
+} IAMForceStatus_t;
+extern IAMForceStatus_t IAMForceStatus;
+
+// Prototypes of the callback functions
+void cb_mode_e(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size);
+void cb_tap(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size);
+
+// Misc stuff
+BATTERY_CHECK_INTERVAL = 10; // Check battery status every 10 tap ticks
+
 // Pad modes
 #define PAD_BANK_RESTORE    0x00        // Go back to the previous bank
 #define PAD_BANK_A          0x01       // Regular pads, lower left quadrant
