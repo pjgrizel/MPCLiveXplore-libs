@@ -328,7 +328,7 @@ void invertMPCToForceMapping()
     uint8_t mpc_note_number = 0xFF;
 
     // Initialize global mapping tables to 0 (just in case)
-    for (uint8_t i = 0; i < CONTROL_TABLE_SIZE; i++)
+    for (int i = 0; i < CONTROL_TABLE_SIZE; i++)
     {
         ForceControlToMPC[i] = _empty;
     }
@@ -464,7 +464,7 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
             // NOTA: it makes no sense to send a button message to a Force Pad, so we ignore this case
             if (force_target->note_number >= 0x80)
             {
-                tklog_debug("Button message from MPC to Force Pad => ignored");
+                LOG_DEBUG("Button message from MPC to Force Pad => ignored");
                 FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
             }
             else
@@ -482,18 +482,18 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
             }
             else
             {
-                tklog_debug("Aftertouch message from Force to MPC => ignored");
+                LOG_DEBUG("Aftertouch message from Force to MPC => ignored");
                 FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
             }
             break;
         case source_led:
             // Why would we even transmit LED to Force?!
-            tklog_debug("LED message from MPC to Force => ignored");
+            LOG_DEBUG("LED message from MPC to Force => ignored");
             FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
             break;
         case source_pad_sysex:
             // Why would we even transmit PAD COLOR to Force?!
-            tklog_debug("LED message from MPC to Force => ignored");
+            LOG_DEBUG("LED message from MPC to Force => ignored");
             FakeMidiMessage(&midi_buffer[i], PAD_SYSEX_MESSAGE_LENGTH);
             break;
         default:
@@ -513,7 +513,7 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
         case source_pad_note_off:
         case source_aftertouch:
         case source_button:
-            tklog_debug("Pad note message from Force to MPC => ignored");
+            LOG_DEBUG("Pad note message from Force to MPC => ignored");
             FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
             break;
 
@@ -735,6 +735,38 @@ size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_
     return 3;
 }
 
+size_t cb_mode_e(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+{
+    FakeMidiMessage(midi_buffer, buffer_size);
+    return buffer_size;
+}
+
+size_t cb_xfader(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+{
+    FakeMidiMessage(midi_buffer, buffer_size);
+    return buffer_size;
+}
+
+size_t cb_shift(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+{
+    FakeMidiMessage(midi_buffer, buffer_size);
+    return buffer_size;
+}
+
+size_t cb_edit_button(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+{
+    FakeMidiMessage(midi_buffer, buffer_size);
+    return buffer_size;
+}
+
+size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+{
+    FakeMidiMessage(midi_buffer, buffer_size);
+    return buffer_size;
+}
+
+
+
 /**************************************************************************
  *                                                                        *
  *  MPC Pads management                                                   *
@@ -760,6 +792,9 @@ bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool inst
 ///////////////////////////////////////////////////////////////////////////////
 void LoadMapping()
 {
+    // Say we'll map stuff
+    LOG_DEBUG("Load mapping...");
+
     // Initialize global mapping tables
     invertMPCToForceMapping();
 
@@ -779,7 +814,7 @@ void LoadMapping()
 ///////////////////////////////////////////////////////////////////////////////
 void FakeMidiMessage(uint8_t buf[], size_t size)
 {
-    // tklog_debug("FakeMidiMessage(buf=%p, size=%d)
+    // LOG_DEBUG("FakeMidiMessage(buf=%p, size=%d)
     // Just put all the bytes to 0
     memset(buf, 0x00, size);
 }
@@ -792,7 +827,7 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 //         tklog_error("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x) - invalid matrix or pad number   \n", layout, pad_number);
 //         return;
 //     }
-//     // tklog_debug("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x)\n", matrix, pad_number);
+//     // LOG_DEBUG("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x)\n", matrix, pad_number);
 
 //     // Get pad coordinates
 //     uint8_t padL = pad_number / 4;
@@ -801,7 +836,7 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 //     // Do we *HAVE* to color this pad?
 //     if (layout != IAMForceStatus.pad_layout)
 //     {
-//         tklog_debug("  ...We ignore repainting message for matrix %02x, pad number %02x\n", layout, pad_number);
+//         LOG_DEBUG("  ...We ignore repainting message for matrix %02x, pad number %02x\n", layout, pad_number);
 //         return;
 //     }
 
@@ -871,10 +906,10 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 //         DownBankMask &= 0xf;
 //     }
 
-//     tklog_debug("MPCSwitchBankMode(bank_button=%02x, key_down=%d) => down_duration=%lld, is_click=%d, is_double_click=%d, shift=%d, current bank mask=%02x, permanent=%02x, DownMask=%02x\n",
+//     LOG_DEBUG("MPCSwitchBankMode(bank_button=%02x, key_down=%d) => down_duration=%lld, is_click=%d, is_double_click=%d, shift=%d, current bank mask=%02x, permanent=%02x, DownMask=%02x\n",
 //                 bank_button, key_down, down_duration, is_click, is_double_click, shiftHoldMode, current_bank_layer_mask, PermanentMode, DownBankMask);
-//     tklog_debug("               ...(bank_button=%02x, key_down=%d)\n", bank_button, key_down);
-//     tklog_debug("               ...DownBankMask = %02x\n", (DownBankMask & ~PAD_BANK_A) << 4);
+//     LOG_DEBUG("               ...(bank_button=%02x, key_down=%d)\n", bank_button, key_down);
+//     LOG_DEBUG("               ...DownBankMask = %02x\n", (DownBankMask & ~PAD_BANK_A) << 4);
 
 //     // Hold modes, "high level" first, low level last
 //     if (is_click && (PermanentMode & selected_bank_mask))
@@ -998,8 +1033,8 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 //     {
 //         if (MPCPadToForceF[i] == force_pad_note_number)
 //         {
-//             // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-//             // tklog_debug("   -> found pad %02x in matrix B\n", i);
+//             // LOG_DEBUG("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
+//             // LOG_DEBUG("   -> found pad %02x in matrix B\n", i);
 //             if (on)
 //             {
 //                 MPCPadValuesF[i].r = color_on.r;
@@ -1017,8 +1052,8 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 //         }
 //         if (MPCPadToForceG[i] == force_pad_note_number)
 //         {
-//             // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-//             // tklog_debug("   -> found pad %02x in matrix C\n", i);
+//             // LOG_DEBUG("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
+//             // LOG_DEBUG("   -> found pad %02x in matrix C\n", i);
 //             if (on)
 //             {
 //                 MPCPadValuesG[i].r = color_on.r;
@@ -1036,8 +1071,8 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 //         }
 //         if (MPCPadToForceH[i] == force_pad_note_number)
 //         {
-//             // tklog_debug("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-//             // tklog_debug("   -> found pad %02x in matrix D\n", i);
+//             // LOG_DEBUG("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
+//             // LOG_DEBUG("   -> found pad %02x in matrix D\n", i);
 //             if (on)
 //             {
 //                 MPCPadValuesH[i].r = color_on.r;
@@ -1071,12 +1106,12 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
     int p = 0;
 
     // Log event
-    tklog_debug("               Set pad color: L=%d C=%d r g b %02X %02X %02X\n", padL, padC, r, g, b);
+    LOG_DEBUG("               Set pad color: L=%d C=%d r g b %02X %02X %02X", padL, padC, r, g, b);
 
     // Double-check input data
     if (padL > 3 || padC > 3)
     {
-        tklog_error("MPC Pad Line refresh : wrong pad number %d %d\n", padL, padC);
+        tklog_error("MPC Pad Line refresh : wrong pad number %d %d", padL, padC);
         return;
     }
 
@@ -1110,8 +1145,8 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
     {
         sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "%02X ", sysexBuff[i]);
     }
-    sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "\n");
-    tklog_debug("%s", sysexBuffDebug);
+    // sprintf(sysexBuffDebug + strlen(sysexBuffDebug), "");
+    // LOG_DEBUG("%s", sysexBuffDebug);
 
     // Send the sysex to the MPC controller
     orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
@@ -1232,6 +1267,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
     uint8_t *midi_buffer = (uint8_t *)midiBuffer;
     size_t i = 0;
     MPCControlToForce_t *mpc_to_force_mapping_p;
+    LOG_DEBUG("We have a %d/%d bytes buffer", size, maxSize);
 
     while (i < size)
     {
@@ -1241,6 +1277,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         if (midi_buffer[i] == 0xF0 && memcmp(&midi_buffer[i], IdentityReplySysexHeader, sizeof(IdentityReplySysexHeader)) == 0)
         {
             // If so, substitue sysex identity request by the faked one
+            LOG_DEBUG("Identity request");
             memcpy(&midi_buffer[i + sizeof(IdentityReplySysexHeader)], DeviceInfoBloc[MPCId].sysexIdReply, sizeof(DeviceInfoBloc[MPCId].sysexIdReply));
             i += sizeof(IdentityReplySysexHeader) + sizeof(DeviceInfoBloc[MPCId].sysexIdReply);
             continue;
@@ -1283,7 +1320,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             //     if (shiftHoldMode && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16)
             //         midi_buffer[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
 
-            //     // tklog_debug("Qlink 0x%02x touch\n",midi_buffer[i+1] );
+            //     // LOG_DEBUG("Qlink 0x%02x touch\n",midi_buffer[i+1] );
             //     i += 3;
             //     continue; // next msg
             // }
@@ -1341,7 +1378,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         if (midi_buffer[i] == 0xF0 && memcmp(&midi_buffer[i], AkaiSysex, sizeof(AkaiSysex)) == 0)
         {
             // Update the sysex id in the sysex for our original hardware
-            // tklog_debug("Inside Akai Sysex\n");
+            // LOG_DEBUG("Inside Akai Sysex\n");
             i += sizeof(AkaiSysex);
             midi_buffer[i] = DeviceInfoBloc[MPCOriginalId].sysexId;
             i++;

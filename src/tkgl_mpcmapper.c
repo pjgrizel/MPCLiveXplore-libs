@@ -75,6 +75,10 @@ void tklog(int level, const char *fmt, ...)
 
     fprintf(stdout, "[tkgl %-8s]  ", tklog_level_strings[level]);
 
+    // Insert \n at the ned if it's not there
+    if (fmt[strlen(fmt)-1] != '\n')
+        fprintf(stdout, "\n");
+
     va_start(ap, fmt);
     vfprintf(stdout, fmt, ap);
     va_end(ap);

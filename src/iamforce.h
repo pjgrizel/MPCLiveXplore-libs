@@ -1,6 +1,15 @@
 #ifndef MPC_MAPPING_H
 #define MPC_MAPPING_H
-#define MAPPING_TABLE_SIZE 256
+
+#include <libgen.h>
+
+// Debug macro
+// #define DEBUG 1
+// #ifdef DEBUG
+    #define LOG_DEBUG(fmt, ...) printf("[ DEBUG       ] %s:%s:%d "fmt"\n", basename(__FILE__), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__)
+// #else
+    // #define LOG_DEBUG(fmt, ...) do {} while (0)
+// #endif
 
 #define PadColor_t uint32_t
 
@@ -119,7 +128,6 @@ size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_targe
 
 // Misc stuff
 #define BATTERY_CHECK_INTERVAL 10 // Check battery status every 10 tap ticks
-
 
 // Basic assignments
 #define FORCE_BT_ENCODER 0x6F // ok
