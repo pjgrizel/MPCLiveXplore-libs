@@ -263,7 +263,7 @@ MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0f].callback = cb_xfader}};
 
 // Straight buttons mapping.
-static const MPCControlToForce_t MPCButtonToForce[127] = {
+static MPCControlToForce_t MPCButtonToForce[127] = {
     // Global stuff
     [LIVEII_BT_ENCODER].note_number = FORCE_BT_ENCODER,
     [LIVEII_BT_SHIFT].callback = cb_shift,
@@ -318,8 +318,13 @@ void invertMPCToForceMapping()
     // Various variables helping us
     size_t MPCPadToForce_n = sizeof(MPCPadToForce) / sizeof(MPCPadToForce[0]);
     size_t MPCButtonToForce_n = sizeof(MPCButtonToForce) / sizeof(MPCButtonToForce[0]);
-    ForceControlToMPC_t _empty = {0xFF, 0xFF, NULL, NULL};
-    ForceControlToMPC_t current_force_to_mpc = _empty;
+    ForceControlToMPC_t _empty = {
+        .note_number = 0xff,
+        .bank = 0xff,
+        .color = COLOR_WHITE,
+        .callback = NULL,
+        .next_control = NULL
+    };
     uint8_t mpc_note_number = 0xFF;
 
     // Initialize global mapping tables to 0 (just in case)
@@ -403,7 +408,6 @@ void invertMPCToForceMapping()
 size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
 {
     size_t i = 0;
-    uint8_t note_number = 0;
     enum
     {
         source_button,       // This is button press
@@ -618,11 +622,11 @@ size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_
     if (buffer_size < 3)
     {
         tklog_error("Buffer too small for tap callback");
-        return;
+        return 1;
     }
 
     // Store status
-    IAMForceStatus.tap_status = buffer[2] == BUTTON_COLOR_LIGHT_RED ? false : true;
+    IAMForceStatus.tap_status = midi_buffer[2] == BUTTON_COLOR_LIGHT_RED ? false : true;
 
     // Once every 10 taps, update battery light
     if (IAMForceStatus.tap_counter == 0)
@@ -724,10 +728,11 @@ size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_
         }
     }
 
-    // Handle counter
+    // Handle counter, increment buffer
     IAMForceStatus.tap_counter++;
     if (IAMForceStatus.tap_counter == BATTERY_CHECK_INTERVAL)
         IAMForceStatus.tap_counter = 0;
+    return 3;
 }
 
 /**************************************************************************
@@ -741,6 +746,7 @@ size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_
 bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_redraw)
 {
     // XXX TODO, including refresh of the pad color if necessary!
+    return false;
 }
 
 /**************************************************************************
@@ -1225,8 +1231,6 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 
     uint8_t *midi_buffer = (uint8_t *)midiBuffer;
     size_t i = 0;
-    size_t count = 0;
-    typeof(&cb_default) callback;
     MPCControlToForce_t *mpc_to_force_mapping_p;
 
     while (i < size)
@@ -1262,7 +1266,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += mpc_to_force_mapping_p->callback(
                     mpc_to_force_mapping_p,
                     NULL,
-                    &midiBuffer[i],
+                    &midi_buffer[i],
                     size - i);
 
             // Advance to the next message
@@ -1292,7 +1296,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             || midi_buffer[i] == 0xA9 // Aftertouch
         )
         {
-            uint8_t pad_number = getMpcPadNumber(midi_buffer[i + 1]);
+            uint8_t pad_number = getMPCPadNumber(midi_buffer[i + 1]);
             mpc_to_force_mapping_p = &MPCPadToForce[IAMForceStatus.pad_layout][pad_number];
             if (mpc_to_force_mapping_p->callback != NULL)
                 i += mpc_to_force_mapping_p->callback(

@@ -2,10 +2,7 @@
 #define MPC_MAPPING_H
 #define MAPPING_TABLE_SIZE 256
 
-extern int map_ButtonsLeds[MAPPING_TABLE_SIZE];
-extern int map_ButtonsLeds_Inv[MAPPING_TABLE_SIZE]; // Inverted table
-extern int map_Ctrl[MAPPING_TABLE_SIZE];
-extern int map_Ctrl_Inv[MAPPING_TABLE_SIZE]; // Inverted table
+#define PadColor_t uint32_t
 
 void LoadMapping();
 size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size);
@@ -15,14 +12,15 @@ extern void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, con
 extern void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b);
 extern void displayBatteryStatus();
 extern void MPCSwitchMatrix(uint8_t new_mode, bool permanently);
+uint8_t getMPCPadNoteNumber(uint8_t pad_number);
+uint8_t getMPCPadNumber(uint8_t note_number);
+void FakeMidiMessage(uint8_t buf[], size_t size);
+bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_redraw);
 
 // Press mode delay in ms. If we keep pressing for more than this time,
 // consider this mode as a temporary toggle
 #define DOUBLE_CLICK_DELAY 500 // release -> pressed of the same button considered a dbl click
 #define HOLD_DELAY 500         // Less than HOLD_DELAY is considered a click
-
-// Pads Color cache captured from sysex events
-#define PadColor_t uint32_t
 
 // Force pads structure
 #define CONTROL_TABLE_SIZE 256 // We consider we can't have more than 128 controls
@@ -120,7 +118,7 @@ size_t cb_edit_button(MPCControlToForce_t *force_target, ForceControlToMPC_t *mp
 size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size);
 
 // Misc stuff
-int BATTERY_CHECK_INTERVAL = 10; // Check battery status every 10 tap ticks
+#define BATTERY_CHECK_INTERVAL 10 // Check battery status every 10 tap ticks
 
 
 // Basic assignments
