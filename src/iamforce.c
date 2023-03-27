@@ -1253,7 +1253,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 i += mpc_to_force_mapping_p->callback(
                     mpc_to_force_mapping_p,
                     NULL,
-                    &midiBuffer[i],
+                    &midi_buffer[i],
                     size - i);
         }
 
@@ -1280,7 +1280,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 {
     uint8_t *midi_buffer = (uint8_t *)midiBuffer;
     size_t i = 0;
-    uint8_t pad_to_update = 0x00;
+    size_t callback_i = 0;
+    ForceControlToMPC_t *force_to_mpc_mapping_p;
 
     while (i < size)
     {
@@ -1330,56 +1331,21 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             }
         }
 
-        // Buttons-Leds.  In that direction, it's a LED ON / OFF for the button
-        // AND/OR an additional PAD sysex!
-        // Check if we must remap...
+        // Buttons LEDs. Just remap with the reverse table,
+        // iterating on each callback if needed
         else if (midi_buffer[i] == 0xB0)
         {
-            // Simple remapping
-            uint8_t original_button = midi_buffer[i + 1];
-            uint8_t target_button = map_ButtonsLeds_Inv[original_button];
-
-            if (target_button >= 0)
-                midi_buffer[i + 1] = target_button;
-
-            // Very specific button treatments
-            switch (original_button)
+            force_to_mpc_mapping_p = &ForceControlToMPC[midi_buffer[i + 1]];
+            while (force_to_mpc_mapping_p != NULL)
             {
-            case FORCE_BT_TAP_TEMPO:
-                TapStatus = midi_buffer[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
-                displayBatteryStatus();
-                break;
-
-            // Those buttons just alter the note layout,
-            // or they are simple modifiers, we keep them as yellow
-            case FORCE_BT_LAUNCH:
-            case FORCE_BT_NOTE:
-            case FORCE_BT_STEP_SEQ:
-            case FORCE_BT_SELECT:
-            case FORCE_BT_EDIT:
-            case FORCE_BT_COPY:
-            case FORCE_BT_DELETE:
-                switch (midi_buffer[i + 2])
-                {
-                case BUTTON_COLOR_RED_LIGHT:
-                    midi_buffer[i + 2] = BUTTON_COLOR_YELLOW_LIGHT;
-                    break;
-                case BUTTON_COLOR_RED:
-                    midi_buffer[i + 2] = BUTTON_COLOR_YELLOW;
-                    break;
-                }
+                callback_i = force_to_mpc_mapping_p->callback(
+                    NULL,
+                    force_to_mpc_mapping_p,
+                    &midi_buffer[i],
+                    size - i);
+                force_to_mpc_mapping_p = force_to_mpc_mapping_p->next_control;
             }
-
-            // Complex remapping (from Force *NOTE NUMBER* to pad)
-            tklog_debug("...complex remapping of button %02x value %02x...\n", midi_buffer[i + 1], midi_buffer[i + 2]);
-            // XXX SHOULD WE *ONLY* CONSIDER 0x7F OR ARE THERE NUANCES IN HERE?
-            if (midi_buffer[i + 2] == 0x7F)
-                SetForceMatrixButton(midi_buffer[i + 1], true);
-            else
-                SetForceMatrixButton(midi_buffer[i + 1], false);
-
-            // Next message
-            i += 3;
+            i += callback_i;        // Only advance once even if we called several callbacks
         }
 
         else
