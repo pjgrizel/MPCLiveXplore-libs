@@ -37,168 +37,240 @@
 // Global status / Rest status
 // Initial status
 IAMForceStatus_t IAMForceStatus = {
-    .pad_layout = MPC_PAD_LAYOUT_N,
+    .pad_layout = IAMFORCE_LAYOUT_N,
     .force_mode = MPC_FORCE_MODE_NONE,
     .mode_buttons = 0,
     .tap_status = false,
     .last_button_down = 0,
-    .started_down = {0, 0},
+    .started_button_down = {0, 0},
     .project_loaded = false,
 };
 IAMForceStatus_t IAMForceRestStatus;
 
-
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
-static MPCControlToForce_t MPCPadToForceA[] = {
-    // First line (the top line)
-    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 32,
-    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 33, 
-    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 34,
-    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 35,
-    // 0x02d line
-    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 40,
-    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 41,
-    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 42,
-    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 43,
-    // 0x03rd line
-    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 48,
-    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 49,
-    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 50,
-    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 51,
-    // 0x04th line
-    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 56,
-    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 57,
-    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 58,
-    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 59
-};
+// Also, the numbers are those of a NOTE NUMBER, not the pad sysex!
+// Pad sysex will be deduced at runtime.
+MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
+    // Pad bank A
+    {
+        // First line (the top line)
+        [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 32,
+        [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 33,
+        [0x02].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 34,
+        [0x03].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 35,
+        // 0x02d line
+        [0x04].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 40,
+        [0x05].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 41,
+        [0x06].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 42,
+        [0x07].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 43,
+        // 0x03rd line
+        [0x08].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 48,
+        [0x09].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 49,
+        [0x0a].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 50,
+        [0x0b].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 51,
+        // 0x04th line
+        [0x0c].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 56,
+        [0x0d].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 57,
+        [0x0e].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 58,
+        [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 59},
+    // Pad bank B
+    {
+        [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 36,
+        [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 37,
+        [0x02].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 38,
+        [0x03].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 39,
+        // 0x02d line
+        [0x04].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 44,
+        [0x05].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 45,
+        [0x06].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 46,
+        [0x07].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 47,
+        // 0x03rd line
+        [0x08].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 52,
+        [0x09].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 53,
+        [0x0a].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 54,
+        [0x0b].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 55,
+        // 0x04th line
+        [0x0c].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 60,
+        [0x0d].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 61,
+        [0x0e].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 62,
+        [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 63},
+    // Pad bank C
+    {
+        // 0x01st line
+        [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 0,
+        [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 1,
+        [0x02].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 2,
+        [0x03].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 3,
+        // 0x02d line
+        [0x04].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 8,
+        [0x05].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 9,
+        [0x06].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 10,
+        [0x07].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 11,
+        // 0x03rd line
+        [0x08].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 16,
+        [0x09].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 17,
+        [0x0a].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 18,
+        [0x0b].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 19,
+        // 0x04th line
+        [0x0c].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 24,
+        [0x0d].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 25,
+        [0x0e].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 26,
+        [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 27},
+    // Pad bank D
+    {
+        // 0x01st line
+        [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 4,
+        [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 5,
+        [0x02].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 6,
+        [0x03].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 7,
+        // 0x02d line
+        [0x04].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 12,
+        [0x05].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 13,
+        [0x06].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 14,
+        [0x07].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 15,
+        // 0x03rd line
+        [0x08].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 20,
+        [0x09].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 21,
+        [0x0a].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 22,
+        [0x0b].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 23,
+        // 0x04th line
+        [0x0c].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 28,
+        [0x0d].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 29,
+        [0x0e].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 30,
+        [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 31},
+    // PAD LAYOUT MODE, this is 100% custom here (because of the reverse relationship)
+    {
+        // 1st line
+        [0x00].callback = cb_mode_e,
+        [0x01].callback = cb_mode_e,
+        [0x02].callback = cb_mode_e,
+        [0x03].callback = cb_mode_e,
+        // 0x2d line
+        [0x04].callback = cb_mode_e,
+        [0x05].callback = cb_mode_e,
+        [0x06].callback = cb_mode_e,
+        [0x07].callback = cb_mode_e,
+        // 3rd line
+        [0x08].callback = cb_mode_e,
+        [0x09].callback = cb_mode_e,
+        [0x0a].callback = cb_mode_e,
+        [0x0b].callback = cb_mode_e,
+        // 4th line
+        [0x0c].callback = cb_mode_e,
+        [0x0d].callback = cb_mode_e,
+        [0x0e].callback = cb_mode_e,
+        [0x0f].callback = cb_mode_e},
+    // SCENE MODE
+    {
+        // 1st line
+        [0x00].note_number = FORCE_BT_STOP_ALL,
+        [0x01].note_number = FORCE_BT_UP,
+        [0x02].note_number = FORCE_BT_LAUNCH_1,
+        [0x03].note_number = FORCE_BT_LAUNCH_5,
+        // 2d line
+        [0x04].note_number = FORCE_BT_STOP_ALL,
+        [0x05].note_number = FORCE_BT_DOWN,
+        [0x06].note_number = FORCE_BT_LAUNCH_2,
+        [0x07].note_number = FORCE_BT_LAUNCH_6,
+        // 3rd line
+        [0x08].note_number = FORCE_BT_UNSET,
+        [0x09].note_number = FORCE_BT_UNSET,
+        [0x0a].note_number = FORCE_BT_LAUNCH_3,
+        [0x0b].note_number = FORCE_BT_LAUNCH_7,
+        // Last line
+        [0x0c].note_number = FORCE_BT_UNSET,
+        [0x0d].note_number = FORCE_BT_UNSET,
+        [0x0e].note_number = FORCE_BT_LAUNCH_4,
+        [0x0f].note_number = FORCE_BT_LAUNCH_8},
+    // IAMFORCE_LAYOUT_PAD_MUTE
+    {
+        [0x00].note_number = FORCE_BT_MUTE,
+        [0x01].note_number = FORCE_BT_SOLO,
+        [0x02].note_number = FORCE_BT_REC_ARM,
+        [0x03].note_number = FORCE_BT_CLIP_STOP,
+        [0x04].note_number = FORCE_BT_LEFT,
+        [0x05].note_number = FORCE_BT_ASSIGN_A,
+        [0x06].note_number = FORCE_BT_ASSIGN_B,
+        [0x07].note_number = FORCE_BT_RIGHT,
+        [0x08].note_number = FORCE_BT_MUTE_PAD1, // XXX which channel is it?
+        [0x09].note_number = FORCE_BT_MUTE_PAD2,
+        [0x0a].note_number = FORCE_BT_MUTE_PAD3,
+        [0x0b].note_number = FORCE_BT_MUTE_PAD4,
+        [0x0c].note_number = FORCE_BT_MUTE_PAD5,
+        [0x0d].note_number = FORCE_BT_MUTE_PAD6,
+        [0x0e].note_number = FORCE_BT_MUTE_PAD7,
+        [0x0f].note_number = FORCE_BT_MUTE_PAD8},
+    // IAMFORCE_LAYOUT_PAD_COLS
+    {
+        [0x00].note_number = FORCE_BT_UNSET,
+        [0x01].note_number = FORCE_BT_UP,
+        [0x02].note_number = FORCE_BT_UNSET,
+        [0x03].note_number = FORCE_BT_UNSET,
+        [0x04].note_number = FORCE_BT_LEFT,
+        [0x05].note_number = FORCE_BT_DOWN,
+        [0x06].note_number = FORCE_BT_UNSET,
+        [0x07].note_number = FORCE_BT_RIGHT,
+        [0x08].note_number = FORCE_BT_COLUMN_PAD1, // XXX Which channel is it?
+        [0x09].note_number = FORCE_BT_COLUMN_PAD2,
+        [0x0a].note_number = FORCE_BT_COLUMN_PAD3,
+        [0x0b].note_number = FORCE_BT_COLUMN_PAD4,
+        [0x0c].note_number = FORCE_BT_COLUMN_PAD5,
+        [0x0d].note_number = FORCE_BT_COLUMN_PAD6,
+        [0x0e].note_number = FORCE_BT_COLUMN_PAD7,
+        [0x0f].note_number = FORCE_BT_COLUMN_PAD8},
+    // IAMFORCE_LAYOUT_PAD_XFDR
+    {
+        [0x00].callback = cb_xfader,
+        [0x01].callback = cb_xfader,
+        [0x02].callback = cb_xfader,
+        [0x03].callback = cb_xfader,
+        [0x04].callback = cb_xfader,
+        [0x05].callback = cb_xfader,
+        [0x06].callback = cb_xfader,
+        [0x07].callback = cb_xfader,
+        [0x08].callback = cb_xfader,
+        [0x09].callback = cb_xfader,
+        [0x0a].callback = cb_xfader,
+        [0x0b].callback = cb_xfader,
+        [0x0c].callback = cb_xfader,
+        [0x0d].callback = cb_xfader,
+        [0x0e].callback = cb_xfader,
+        [0x0f].callback = cb_xfader}};
 
-static MPCControlToForce_t MPCPadToForceB[] = {
-    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 36,
-    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 37,
-    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 38,
-    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 39,
-    // 0x02d line
-    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 44,
-    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 45,
-    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 46,
-    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 47,
-    // 0x03rd line
-    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 52,
-    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 53,
-    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 54,
-    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 55,
-    // 0x04th line
-    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 60,
-    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 61,
-    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 62,
-    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 63
-};
+// Buttons mapping.
+static const MPCControlToForce_t MPCButtonToForce[127] = {
+    // Global stuff
+    [LIVEII_BT_ENCODER].note_number = FORCE_BT_ENCODER,
+    [LIVEII_BT_SHIFT].note_number = FORCE_BT_SHIFT,
+    [LIVEII_BT_TAP_TEMPO].callback = cb_tap_tempo,
+    [LIVEII_BT_QLINK_SELECT].note_number = FORCE_BT_KNOBS,
+    [LIVEII_BT_PLUS].note_number = FORCE_BT_PLUS,
+    [LIVEII_BT_MINUS].note_number = FORCE_BT_MINUS,
 
-static MPCControlToForce_t MPCPadToForceC[] = {
-    // 0x01st line
-    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 0,
-    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 1,
-    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 2,
-    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 3,
-    // 0x02d line
-    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 8,
-    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 9,
-    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 10,
-    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 11,
-    // 0x03rd line
-    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 16,
-    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 17,
-    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 18,
-    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 19,
-    // 0x04th line
-    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 24,
-    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 25,
-    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 26,
-    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 27
-};
+    // Transport / mode buttons
+    [LIVEII_BT_MENU].note_number = FORCE_BT_MENU,
+    [LIVEII_BT_MAIN].note_number = FORCE_BT_MATRIX,
+    [LIVEII_BT_MIX].note_number = FORCE_BT_MIXER,
+    [LIVEII_BT_MUTE].note_number = FORCE_BT_CLIP,
+    [LIVEII_BT_NEXT_SEQ].note_number = FORCE_BT_NAVIGATE,
+    [LIVEII_BT_REC].note_number = FORCE_BT_REC,
+    [LIVEII_BT_OVERDUB].note_number = FORCE_BT_ARP,
+    [LIVEII_BT_STOP].note_number = FORCE_BT_STOP,
+    [LIVEII_BT_PLAY].callback = cb_play,
+    [LIVEII_BT_PLAY_START].note_number = FORCE_BT_PLAY,
 
-static MPCControlToForce_t MPCPadToForceD[] = {
-    // 0x01st line
-    [0x00].type = CT_PAD, [0x00].number = FORCEPADS_TABLE_IDX_OFFSET + 4,
-    [0x01].type = CT_PAD, [0x01].number = FORCEPADS_TABLE_IDX_OFFSET + 5,
-    [0x02].type = CT_PAD, [0x02].number = FORCEPADS_TABLE_IDX_OFFSET + 6,
-    [0x03].type = CT_PAD, [0x03].number = FORCEPADS_TABLE_IDX_OFFSET + 7,
-    // 0x02d line
-    [0x04].type = CT_PAD, [0x04].number = FORCEPADS_TABLE_IDX_OFFSET + 12,
-    [0x05].type = CT_PAD, [0x05].number = FORCEPADS_TABLE_IDX_OFFSET + 13,
-    [0x06].type = CT_PAD, [0x06].number = FORCEPADS_TABLE_IDX_OFFSET + 14,
-    [0x07].type = CT_PAD, [0x07].number = FORCEPADS_TABLE_IDX_OFFSET + 15,
-    // 0x03rd line
-    [0x08].type = CT_PAD, [0x08].number = FORCEPADS_TABLE_IDX_OFFSET + 20,
-    [0x09].type = CT_PAD, [0x09].number = FORCEPADS_TABLE_IDX_OFFSET + 21,
-    [0x0a].type = CT_PAD, [0x0a].number = FORCEPADS_TABLE_IDX_OFFSET + 22,
-    [0x0b].type = CT_PAD, [0x0b].number = FORCEPADS_TABLE_IDX_OFFSET + 23,
-    // 0x04th line
-    [0x0c].type = CT_PAD, [0x0c].number = FORCEPADS_TABLE_IDX_OFFSET + 28,
-    [0x0d].type = CT_PAD, [0x0d].number = FORCEPADS_TABLE_IDX_OFFSET + 29,
-    [0x0e].type = CT_PAD, [0x0e].number = FORCEPADS_TABLE_IDX_OFFSET + 30,
-    [0x0f].type = CT_PAD, [0x0f].number = FORCEPADS_TABLE_IDX_OFFSET + 31
-};
+    // Edition buttons. These are double-function buttons so we use a callback here
+    [LIVEII_BT_NOTE_REPEAT].callback = cb_edit_button,
+    [LIVEII_BT_FULL_LEVEL].callback = cb_edit_button,
+    [LIVEII_BT_16_LEVEL].callback = cb_edit_button,
+    [LIVEII_BT_ERASE].callback = cb_edit_button,
 
-// Mode E is completely custom
-static MPCControlToForce_t MPCPadToForceE[] = {
-    // 1st line
-    [0x00].type = CT_CUS, [0x00].callback = cb_mode_e,
-    [0x01].type = CT_CUS, [0x01].callback = cb_mode_e,
-    [0x02].type = CT_BTN, [0x02].callback = cb_mode_e, [0x2].number = FORCE_BT_LAUNCH,
-    [0x03].type = CT_BTN, [0x03].callback = cb_mode_e, [3].number = FORCE_BT_LAUNCH,
-    // 0x2d line
-    [0x04].type = CT_CUS, [0x04].callback = cb_mode_e,
-    [0x05].type = CT_CUS, [0x05].callback = cb_mode_e,
-    [0x06].type = CT_CUS, [0x06].callback = cb_mode_e, [6].number = FORCE_BT_LAUNCH,
-    [0x07].type = CT_CUS, [0x07].callback = cb_mode_e, [7].number = FORCE_BT_LAUNCH,
-    // 3rd line
-    [0x08].type = CT_CUS, [0x08].callback = cb_mode_e, [8].number = FORCE_BT_STEP_SEQ,
-    [0x09].type = CT_CUS, [0x09].callback = cb_mode_e, [9].number = FORCE_BT_STEP_SEQ,
-    [0x0a].type = CT_CUS, [0x0a].callback = cb_mode_e, [10].number = FORCE_BT_NOTE,
-    [0x0b].type = CT_CUS, [0x0b].callback = cb_mode_e, [11].number = FORCE_BT_NOTE,
-    // 4th line
-    [0x0c].type = CT_CUS, [0x0c].callback = cb_mode_e, [12].number = FORCE_BT_STEP_SEQ,
-    [0x0d].type = CT_CUS, [0x0d].callback = cb_mode_e, [0x0d].number = FORCE_BT_STEP_SEQ,
-    [0x0e].type = CT_CUS, [0x0e].callback = cb_mode_e, [0x0e].number = FORCE_BT_NOTE,
-    [0x0f].type = CT_CUS, [0x0f].callback = cb_mode_e, [0x0f].number = FORCE_BT_NOTE
-};
-
-
-static const uint8_t MPCPadToForceF[] = {
-    0, FORCE_BT_ASSIGN_A, FORCE_BT_ASSIGN_B, FORCE_BT_MASTER,
-    FORCE_BT_MUTE, FORCE_BT_SOLO, FORCE_BT_REC_ARM, FORCE_BT_CLIP_STOP,
-    FORCE_BT_MUTE_PAD5, FORCE_BT_MUTE_PAD6, FORCE_BT_MUTE_PAD7, FORCE_BT_MUTE_PAD8,
-    FORCE_BT_MUTE_PAD1, FORCE_BT_MUTE_PAD2, FORCE_BT_MUTE_PAD3, FORCE_BT_MUTE_PAD4};
-
-static const uint8_t MPCPadToForceG[] = {
-    0, FORCE_BT_UP, 0, 0,
-    FORCE_BT_LEFT, FORCE_BT_DOWN, FORCE_BT_RIGHT, 0,
-    FORCE_BT_COLUMN_PAD5, FORCE_BT_COLUMN_PAD6, FORCE_BT_COLUMN_PAD7, FORCE_BT_COLUMN_PAD8,
-    FORCE_BT_COLUMN_PAD1, FORCE_BT_COLUMN_PAD2, FORCE_BT_COLUMN_PAD3, FORCE_BT_COLUMN_PAD4};
-
-static const uint8_t MPCPadToForceH[] = {
-    FORCE_BT_LAUNCH_1, FORCE_BT_LAUNCH_5, 0 /* UP */, FORCE_BT_STOP_ALL,
-    FORCE_BT_LAUNCH_2, FORCE_BT_LAUNCH_6, 0 /* DOWN */, 0,
-    FORCE_BT_LAUNCH_3, FORCE_BT_LAUNCH_7, 0 /* PREV SEQ */, 0,
-    FORCE_BT_LAUNCH_4, FORCE_BT_LAUNCH_8, 0 /* NEXT SEQ */, 0
-};
-
-// ...and this is the X-fader (to be done)
-static MPCControlToForce_t MPCPadToForceX[] = {
-};
-
-// Buttons mapping
-static const MPCControlToForce_t MPCButtonToForce[] = {
-    [LIVEII_BT_ENCODER].type = CT_BTN, [LIVEII_BT_ENCODER].number = FORCE_BT_ENCODER
-};
-
-// Create an array that references all the above arrays
-static MPCControlToForce_t *MPCPadToForce_a[] = {
-    MPCPadToForceA, MPCPadToForceB, MPCPadToForceC, MPCPadToForceD, MPCPadToForceE
-};
-
+    // Upper right zone
+    [LIVEII_BT_UNDO].note_number = FORCE_BT_UNDO,
+    [LIVEII_BT_TC].note_number = FORCE_BT_LOAD,
+    [LIVEII_BT_COPY].note_number = FORCE_BT_SAVE,
+    [LIVEII_BT_STEP_SEQ].note_number = FORCE_BT_MASTER};
 
 
 // Ok, now we need a data structure to store the other way around.
@@ -207,109 +279,97 @@ static MPCControlToForce_t *MPCPadToForce_a[] = {
 // We could use malloc() and a linked list, but we find it more convenient
 // to handle that in a static array. The memory footprint would be
 // something like 128 * 8 bytes (roughly) = 1Kb which is not such a big deal.
-static ForceControlToMPC_t ForcePadToMPC[CONTROL_TABLE_SIZE];
-static ForceControlToMPC_t ForceButtonToMPC[CONTROL_TABLE_SIZE];
-static ForceControlToMPC_t ForceExtraToMPC[CONTROL_TABLE_SIZE];
-static uint8_t ForceExtraToMPCNext = 0;     // Next available index
+// static ForceControlToMPC_t ForcePadToMPC[CONTROL_TABLE_SIZE];
+static ForceControlToMPC_t ForceControlToMPC[CONTROL_TABLE_SIZE];
+static uint8_t ForceControlToMPCExtraNext = 0x80;                             // Next available index
+static uint8_t ForceControlToMPCExtraMax = 0x80 + FORCEPADS_TABLE_IDX_OFFSET; // Max index
 
 // These are the matrices where actual RGB values are stored
 // They are initialized at start time and populated in the Write function
 // And they are given with their index
-// Use MPC_PAD_LAYOUT_* variables to address a specific array
-static ForceMPCPadColor_t MPCPadValues[MPC_PAD_LAYOUT_N][16];
-
-// To store an rgb value, we do the following:
-// MPCPAdValues[bank][pad].r = 0x00;
-
-// MPCPadToForceA will be converted to sth like this during startup:
-// XForcePadToMPC[] = {
-//     // Pad0 => bank A, pad 0
-//     [0x00].type = CT_PAD, [0x00].bank=MPC_PAD_VALUES_BANK_A, [0x00].number=0,
-//     // etc
-// };
+// Use IAMFORCE_LAYOUT_PAD_* variables to address a specific array
+static ForceMPCPadColor_t MPCPadValues[IAMFORCE_LAYOUT_N][16];
 
 void invertMPCToForceMapping()
 {
     // Various variables helping us
-    size_t n_MPCPadToForce_a = sizeof(MPCPadToForce_a)/sizeof(MPCPadToForce_a[0]);
-    ForceControlToMPC_t _empty = {0, NULL, 0, NULL, NULL};
+    size_t MPCPadToForce_n = sizeof(MPCPadToForce) / sizeof(MPCPadToForce[0]);
+    size_t MPCButtonToForce_n = sizeof(MPCButtonToForce) / sizeof(MPCButtonToForce[0]);
+    ForceControlToMPC_t _empty = {0xFF, 0xFF, NULL, NULL};
+    ForceControlToMPC_t current_force_to_mpc = _empty;
+    uint8_t mpc_note_number = 0xFF;
 
-   // Initialize global mapping tables to 0 (just in case)
-    for (int i = 0; i < CONTROL_TABLE_SIZE; i++)
+    // Initialize global mapping tables to 0 (just in case)
+    for (uint8_t i = 0; i < CONTROL_TABLE_SIZE; i++)
     {
-        ForcePadToMPC[i] = _empty;
-        ForceButtonToMPC[i] = _empty;
-        ForceExtraToMPC[i] = _empty;
+        ForceControlToMPC[i] = _empty;
     }
 
     // Iterate over all MPCPadToForce_a arrays
-    for (uint8_t i=0 ; i <  n_MPCPadToForce_a ; i++)
+    for (uint8_t i = 0; i < MPCPadToForce_n; i++)
     {
         // Iterate over all elements of the mapping
-        for (uint8_t j=0 ; j < 16 ; j++)
+        for (uint8_t j = 0; j < 16; j++)
         {
-            // Get the current element
-            MPCControlToForce_t mapping = MPCPadToForce_a[i][j];
-            uint8_t mapping_type = mapping.type;
+            // Get the current element and tweak values if necessary
+            MPCControlToForce_t *mapping_p = &MPCPadToForce[i][j];
+            if (mapping_p->note_number == 0xFF)
+                continue;
+            if (mapping_p->callback == NULL)
+                mapping_p->callback = cb_default;
+            mpc_note_number = getMPCPadNoteNumber(j);
 
-            // Handle multiple controls mapping to a single element
-            // If there's already a mapping for this element, we need to
-            // create an extra one!
-            switch (ForcePadToMPC[mapping.number].type)
+            // Handle multiple controls mapping
+            // We use a 16 bits integer here because MPCPadToForce can have
+            // more than 256 elements (with the extra elements)
+            ForceControlToMPC_t *reverse_mapping_p = &ForceControlToMPC[mapping_p->note_number];
+            while (reverse_mapping_p->next_control != NULL)
             {
-                case CT_NONE:
-                case CT_CUS:
-                    break;
-                case CT_PAD:
-                    ForcePadToMPC[mapping.number].next_control = &ForceExtraToMPC[ForceExtraToMPCNext];
-                    mapping_type = CT_EXTRA;
-                    break;
-                case CT_BTN:
-                    ForceButtonToMPC[mapping.number].next_control = &ForceExtraToMPC[ForceExtraToMPCNext];
-                    mapping_type = CT_EXTRA;
-                    break;
-                default:
-                    tklog_error("Unexpected type in ForceButtonToMPC[%d].type = %d", mapping.number, ForcePadToMPC[mapping.number].type);
-                    break;
+                reverse_mapping_p = &ForceControlToMPC[ForceControlToMPCExtraNext];
+                if (ForceControlToMPCExtraNext < ForceControlToMPCExtraMax)
+                    ForceControlToMPCExtraNext++;
+                else
+                    tklog_error("Can't increment ForceControlToMPCExtraNext, you have too many buttons with multiple combinations");
             }
 
-            // If the current element is a pad
-            switch(mapping_type)
-            {
-                case CT_NONE:
-                case CT_CUS:        // Custom controls are 1-way mappings
-                    break;
-
-                case CT_PAD:
-                    ForcePadToMPC[mapping.number].type = mapping.type;
-                    ForcePadToMPC[mapping.number].bank = i;
-                    ForcePadToMPC[mapping.number].number = j;   // XXX IS THIS WRONG?? (remap this to a real Force number)
-                    ForcePadToMPC[mapping.number].callback = mapping.callback;
-                    break;
-
-                case CT_BTN:
-                    ForceButtonToMPC[mapping.number].type = mapping.type;
-                    ForceButtonToMPC[mapping.number].bank = i;
-                    ForceButtonToMPC[mapping.number].number = j;
-                    ForceButtonToMPC[mapping.number].callback = mapping.callback;
-                    break;
-
-                case CT_EXTRA:
-                    ForceExtraToMPC[ForceExtraToMPCNext].type = mapping.type;
-                    ForceExtraToMPC[ForceExtraToMPCNext].bank = i;
-                    ForceExtraToMPC[ForceExtraToMPCNext].number = j;
-                    ForceExtraToMPC[ForceExtraToMPCNext].callback = mapping.callback;
-                    ForceExtraToMPCNext++;
-                    break;
-
-                default:
-                    tklog_error("Unexpected type in MPCPadToForce_a[%d][%d].type = %d");
-                    break;
-            }
+            // Save mapping
+            reverse_mapping_p->note_number = mpc_note_number;
+            reverse_mapping_p->bank = i;
+            reverse_mapping_p->callback = mapping_p->callback;
+            reverse_mapping_p->next_control = NULL;
         }
     }
-}
 
+    // Now we do the same with MPCButtonToForce!
+    for (uint8_t note_number = 0 ; note_number < MPCButtonToForce_n ; note_number++)
+    {
+        // Get the current element and tweak values if necessary
+        MPCControlToForce_t *mapping_p = &MPCButtonToForce[note_number];
+        if (mapping_p->note_number == 0xFF)
+            continue;
+        if (mapping_p->callback == NULL)
+            mapping_p->callback = cb_default;
+
+        // Handle multiple controls mapping
+        // We use a 16 bits integer here because MPCPadToForce can have
+        // more than 256 elements (with the extra elements)
+        ForceControlToMPC_t *reverse_mapping_p = &ForceControlToMPC[mapping_p->note_number];
+        while (reverse_mapping_p->next_control != NULL)
+        {
+            reverse_mapping_p = &ForceControlToMPC[ForceControlToMPCExtraNext];
+            if (ForceControlToMPCExtraNext < ForceControlToMPCExtraMax)
+                ForceControlToMPCExtraNext++;
+            else
+                tklog_error("Can't increment ForceControlToMPCExtraNext, you have too many buttons with multiple combinations");
+        }
+
+        // Save mapping
+        reverse_mapping_p->note_number = mpc_note_number;
+        reverse_mapping_p->bank = IAMFORCE_LAYOUT_NONE;
+        reverse_mapping_p->callback = mapping_p->callback;
+        reverse_mapping_p->next_control = NULL;
+    }
+}
 
 /**************************************************************************
  *                                                                        *
@@ -317,7 +377,21 @@ void invertMPCToForceMapping()
  *                                                                        *
  **************************************************************************/
 
-void cb_tap(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
+{
+    size_t i = 0;
+    // Default callback behavior
+    // (which is just to propagate to the appropriate pad or button
+
+    // XXX TODO We swallow Aftertouch messages
+    if (midi_buffer[i] == 0xA9)
+    {
+        PrepareFakeMidiMsg(&midi_buffer[i]);
+        i += 3;
+    }
+}
+
+size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
 {
     // The tools of the trade
     int fd;
@@ -426,8 +500,7 @@ void cb_tap(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, 
 
         // Let's write it to the private ports
         if (
-            IAMForceStatus.battery_status != battery_status 
-            || IAMForceStatus.battery_capacity != capacity)
+            IAMForceStatus.battery_status != battery_status || IAMForceStatus.battery_capacity != capacity)
         {
             // Update lights
             orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
@@ -447,7 +520,6 @@ void cb_tap(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, 
         IAMForceStatus.tap_counter = 0;
 }
 
-
 /**************************************************************************
  *                                                                        *
  *  Core functions                                                        *
@@ -462,42 +534,10 @@ void LoadMapping()
     // Initialize global mapping tables
     invertMPCToForceMapping();
 
-    // Hardcoded mapping file (it's 'Force Button => LiveII Button')
-    map_ButtonsLeds[LIVEII_BT_ENCODER] = FORCE_BT_ENCODER;
-    map_ButtonsLeds[LIVEII_BT_QLINK_SELECT] = FORCE_BT_KNOBS;
-    map_ButtonsLeds[LIVEII_BT_SHIFT] = FORCE_BT_SHIFT;
-    map_ButtonsLeds[LIVEII_BT_TAP_TEMPO] = FORCE_BT_TAP_TEMPO;
-    map_ButtonsLeds[LIVEII_BT_PLUS] = FORCE_BT_PLUS;
-    map_ButtonsLeds[LIVEII_BT_MINUS] = FORCE_BT_MINUS;
-
-    // Transport / mode buttons
-    map_ButtonsLeds[LIVEII_BT_MENU] = FORCE_BT_MENU;
-    map_ButtonsLeds[LIVEII_BT_MAIN] = FORCE_BT_MATRIX;
-    map_ButtonsLeds[LIVEII_BT_MIX] = FORCE_BT_MIXER;
-    map_ButtonsLeds[LIVEII_BT_MUTE] = FORCE_BT_STEP_SEQ; // Or ARP? Meh.
-    map_ButtonsLeds[LIVEII_BT_NEXT_SEQ] = FORCE_BT_LAUNCH;
-    map_ButtonsLeds[LIVEII_BT_REC] = FORCE_BT_REC;
-    map_ButtonsLeds[LIVEII_BT_OVERDUB] = FORCE_BT_CLIP;
-    map_ButtonsLeds[LIVEII_BT_STOP] = FORCE_BT_STOP;
-    map_ButtonsLeds[LIVEII_BT_PLAY] = FORCE_BT_PLAY;
-    map_ButtonsLeds[LIVEII_BT_PLAY_START] = FORCE_BT_NOTE;
-
-    // Edition buttons
-    map_ButtonsLeds[LIVEII_BT_NOTE_REPEAT] = FORCE_BT_SELECT;
-    map_ButtonsLeds[LIVEII_BT_FULL_LEVEL] = FORCE_BT_EDIT;
-    map_ButtonsLeds[LIVEII_BT_16_LEVEL] = FORCE_BT_COPY;
-    map_ButtonsLeds[LIVEII_BT_ERASE] = FORCE_BT_DELETE;
-
-    // Quadrant zone
-    map_ButtonsLeds[LIVEII_BT_UNDO] = FORCE_BT_UNDO;
-    map_ButtonsLeds[LIVEII_BT_TC] = FORCE_BT_LOAD;
-    map_ButtonsLeds[LIVEII_BT_COPY] = FORCE_BT_SAVE;
-    map_ButtonsLeds[LIVEII_BT_STEP_SEQ] = FORCE_BT_NAVIGATE;
-
     // Initialize all pads caches (at load-time, we consider they are black)
-    for (int i = 0 ; i < MPC_PAD_LAYOUT_N ; i++)
+    for (int i = 0; i < IAMFORCE_LAYOUT_N; i++)
     {
-        for (int j = 0 ; j < 16 ; j++)
+        for (int j = 0; j < 16; j++)
         {
             MPCPadValues[i][j].r = 0x00;
             MPCPadValues[i][j].g = 0x00;
@@ -509,7 +549,6 @@ void LoadMapping()
     clock_gettime(CLOCK_MONOTONIC_RAW, &IAMForceStatus.started_button_down);
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // Prepare a fake midi message in the Private midi context
 ///////////////////////////////////////////////////////////////////////////////
@@ -520,8 +559,14 @@ void PrepareFakeMidiMsg(uint8_t buf[])
     buf[2] = 0x00;
 }
 
-void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
+// Completely redraw a matrix according to its cache value
+void DrawPadLayoutFromCache(uint8_t layout, uint8_t pad_number)
 {
+    if (layout >= IAMFORCE_LAYOUT_N || pad_number >= 16)
+    {
+        tklog_error("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x) - invalid matrix or pad number   \n", layout, pad_number);
+        return;
+    }
     // tklog_debug("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x)\n", matrix, pad_number);
 
     // Get pad coordinates
@@ -529,64 +574,17 @@ void DrawMatrixPadFromCache(uint8_t matrix, uint8_t pad_number)
     uint8_t padC = pad_number % 4;
 
     // Do we *HAVE* to color this pad?
-    if (matrix != MPCPadMode)
+    if (layout != IAMForceStatus.pad_layout)
     {
-        tklog_debug("  ...We ignore repainting message for matrix %02x, pad number %02x\n", matrix, pad_number);
+        tklog_debug("  ...We ignore repainting message for matrix %02x, pad number %02x\n", layout, pad_number);
         return;
     }
 
     // Find the pad color as it's stored
-    switch (matrix)
-    {
-    case PAD_BANK_A:
-        SetPadColor(padL, padC,
-                    MPCPadValuesA[pad_number].r,
-                    MPCPadValuesA[pad_number].g,
-                    MPCPadValuesA[pad_number].b);
-        break;
-    case PAD_BANK_B:
-        SetPadColor(padL, padC,
-                    MPCPadValuesB[pad_number].r,
-                    MPCPadValuesB[pad_number].g,
-                    MPCPadValuesB[pad_number].b);
-        break;
-    case PAD_BANK_C:
-        SetPadColor(padL, padC,
-                    MPCPadValuesC[pad_number].r,
-                    MPCPadValuesC[pad_number].g,
-                    MPCPadValuesC[pad_number].b);
-        break;
-    case PAD_BANK_D:
-        SetPadColor(padL, padC,
-                    MPCPadValuesD[pad_number].r,
-                    MPCPadValuesD[pad_number].g,
-                    MPCPadValuesD[pad_number].b);
-        break;
-    case PAD_BANK_E:
-        SetPadColor(padL, padC,
-                    MPCPadValuesE[pad_number].r,
-                    MPCPadValuesE[pad_number].g,
-                    MPCPadValuesE[pad_number].b);
-        break;
-    case PAD_BANK_F:
-        SetPadColor(padL, padC,
-                    MPCPadValuesF[pad_number].r,
-                    MPCPadValuesF[pad_number].g,
-                    MPCPadValuesF[pad_number].b);
-        break;
-    case PAD_BANK_G:
-        SetPadColor(padL, padC,
-                    MPCPadValuesG[pad_number].r,
-                    MPCPadValuesG[pad_number].g,
-                    MPCPadValuesG[pad_number].b);
-        break;
-    case PAD_BANK_H:
-        SetPadColor(padL, padC,
-                    MPCPadValuesH[pad_number].r,
-                    MPCPadValuesH[pad_number].g,
-                    MPCPadValuesH[pad_number].b);
-        break;
-    }
+    SetPadColor(padL, padC,
+                MPCPadValues[layout][pad_number].r,
+                MPCPadValues[layout][pad_number].g,
+                MPCPadValues[layout][pad_number].b);
 }
 
 // //////////////////////////////////////////////////////////////////
@@ -1085,7 +1083,7 @@ void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint
 
 // Given a MIDI note number, we convert it to a PAD number,
 // from 0 (top left) to 15 (bottom right)
-uint8_t getMpcPadNumber(uint8_t note_number)
+uint8_t getMPCPadNumber(uint8_t note_number)
 {
     switch (note_number)
     {
@@ -1126,6 +1124,49 @@ uint8_t getMpcPadNumber(uint8_t note_number)
     }
 }
 
+// This is the reverse of getMPCPadNumber
+uint8_t getMPCPadNoteNumber(uint8_t pad_number)
+{
+    switch (pad_number)
+    {
+    case 0:
+        return LIVEII_PAD_TL0;
+    case 1:
+        return LIVEII_PAD_TL1;
+    case 2:
+        return LIVEII_PAD_TL2;
+    case 3:
+        return LIVEII_PAD_TL3;
+    case 4:
+        return LIVEII_PAD_TL4;
+    case 5:
+        return LIVEII_PAD_TL5;
+    case 6:
+        return LIVEII_PAD_TL6;
+    case 7:
+        return LIVEII_PAD_TL7;
+    case 8:
+        return LIVEII_PAD_TL8;
+    case 9:
+        return LIVEII_PAD_TL9;
+    case 10:
+        return LIVEII_PAD_TL10;
+    case 11:
+        return LIVEII_PAD_TL11;
+    case 12:
+        return LIVEII_PAD_TL12;
+    case 13:
+        return LIVEII_PAD_TL13;
+    case 14:
+        return LIVEII_PAD_TL14;
+    case 15:
+        return LIVEII_PAD_TL15;
+    default:
+        tklog_error("Invalid pad number: %02x", pad_number);
+        return 0xFF;
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // MIDI READ - APP ON MPC READING AS FORCE
 // Here we read the MIDI messages from the MPC and we send them to the Force
@@ -1137,18 +1178,21 @@ uint8_t getMpcPadNumber(uint8_t note_number)
 size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 {
 
-    uint8_t *myBuff = (uint8_t *)midiBuffer;
-    // uint8_t note_number;
+    uint8_t *midi_buffer = (uint8_t *)midiBuffer;
     size_t i = 0;
+    size_t count = 0;
+    typeof(&cb_default) callback;
+    MPCControlToForce_t *mpc_to_force_mapping_p;
+
     while (i < size)
     {
 
         // AKAI SYSEX ------------------------------------------------------------
         // IDENTITY REQUEST
-        if (myBuff[i] == 0xF0 && memcmp(&myBuff[i], IdentityReplySysexHeader, sizeof(IdentityReplySysexHeader)) == 0)
+        if (midi_buffer[i] == 0xF0 && memcmp(&midi_buffer[i], IdentityReplySysexHeader, sizeof(IdentityReplySysexHeader)) == 0)
         {
             // If so, substitue sysex identity request by the faked one
-            memcpy(&myBuff[i + sizeof(IdentityReplySysexHeader)], DeviceInfoBloc[MPCId].sysexIdReply, sizeof(DeviceInfoBloc[MPCId].sysexIdReply));
+            memcpy(&midi_buffer[i + sizeof(IdentityReplySysexHeader)], DeviceInfoBloc[MPCId].sysexIdReply, sizeof(DeviceInfoBloc[MPCId].sysexIdReply));
             i += sizeof(IdentityReplySysexHeader) + sizeof(DeviceInfoBloc[MPCId].sysexIdReply);
             continue;
         }
@@ -1156,157 +1200,67 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         // KNOBS TURN (UNMAPPED BECAUSE ARE ALL EQUIVALENT ON ALL DEVICES) ------
         // If it's a shift + knob turn, add an offset
         //  B0 [10-31] [7F - n]
-        if (myBuff[i] == 0xB0)
+        else if (midi_buffer[i] == 0xB0)
         {
-            if (shiftHoldMode && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16 && myBuff[i + 1] >= 0x10 && myBuff[i + 1] <= 0x31)
-                myBuff[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
+            if (IAMForceStatus.shift_hold && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16 && midi_buffer[i + 1] >= 0x10 && midi_buffer[i + 1] <= 0x31)
+                midi_buffer[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
             i += 3;
             continue;
         }
 
-        // BUTTONS PRESS / RELEASE------------------------------------------------
-        if (myBuff[i] == 0x90)
+        // BUTTONS PRESS / RELEASE (NOT pads) -------------------------------------------
+        else if (midi_buffer[i] == 0x90)
         {
-            // tklog_debug("Button 0x%02x %s\n", myBuff[i + 1], (myBuff[i + 2] == 0x7F ? "key_down" : "released"));
+            // Apply mapping, call the callback function
+            mpc_to_force_mapping_p = &MPCButtonToForce[midi_buffer[i + 1]];
+            if (mpc_to_force_mapping_p->callback != NULL)
+                i += mpc_to_force_mapping_p->callback(
+                    mpc_to_force_mapping_p,
+                    NULL,
+                    &midiBuffer[i],
+                    size - i);
 
-            // SHIFT key_down/released (nb the SHIFT button can't be mapped)
-            // Double click on SHIFT is not managed at all. Avoid it.
-            // NOTA: SHIFT IS NOW ONLY USED FOR QLINK KNOBS
-            if (myBuff[i + 1] == SHIFT_KEY_VALUE)
-            {
-                // We keep track of the shift mode, but we propagate the shift event to the Force
-                shiftHoldMode = (myBuff[i + 2] == 0x7F ? true : false);
-            }
+            // Advance to the next message
+            continue; // next msg
 
-            // Select bank mode.
-            // Here we use BankA button as a pseudo-shift.
-            // In any case if we're manipulating BANK buttons, we kill the event.
-            switch (myBuff[i + 1])
-            {
-            case LIVEII_BT_BANK_A:
-            case LIVEII_BT_BANK_B:
-            case LIVEII_BT_BANK_C:
-            case LIVEII_BT_BANK_D:
-                // Consider switching modes
-                MPCSwitchBankMode(myBuff[i + 1], myBuff[i + 2] == 0x7F ? true : false);
-
-                // Kill the message, ignore the rest
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                continue;
-            }
-
+            // XXX TODO: add qlink management
             // Qlink management is hard coded
             // SHIFT "KNOB TOUCH" button :  add the offset when possible
             // MPC : 90 [54-63] 7F      FORCE : 90 [53-5A] 7F  (no "untouch" exists)
-            if (myBuff[i + 1] >= 0x54 && myBuff[i + 1] <= 0x63)
-            {
-                myBuff[i + 1]--; // Map to force Qlink touch
+            // if (midi_buffer[i + 1] >= 0x54 && midi_buffer[i + 1] <= 0x63)
+            // {
+            //     midi_buffer[i + 1]--; // Map to force Qlink touch
 
-                if (shiftHoldMode && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16)
-                    myBuff[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
+            //     if (shiftHoldMode && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16)
+            //         midi_buffer[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
 
-                // tklog_debug("Qlink 0x%02x touch\n",myBuff[i+1] );
-                i += 3;
-                continue; // next msg
-            }
-
-            // We remap it! Start with simple buttons mapping
-            // tklog_debug("Mapping for %d = %d - shift = %d \n", myBuff[i+1], map_ButtonsLeds[ myBuff[i+1] ],map_ButtonsLeds[ myBuff[i+1] +  0x80 ] );
-            // int mapValue = map_ButtonsLeds[myBuff[i + 1] + (shiftHoldMode ? 0x80 : 0)];
-            int mapValue = map_ButtonsLeds[myBuff[i + 1]];
-
-            // No mapping. Next msg
-            if (mapValue < 0)
-            {
-                PrepareFakeMidiMsg(&myBuff[i]);
-                i += 3;
-                // tklog_debug("No mapping found for 0x%02x \n",myBuff[i+1]);
-
-                continue; // next msg
-            }
-
-            // Remap the key
-            myBuff[i + 1] = mapValue;
-            i += 3;
-            continue; // next msg
+            //     // tklog_debug("Qlink 0x%02x touch\n",midi_buffer[i+1] );
+            //     i += 3;
+            //     continue; // next msg
+            // }
         }
 
         // PADS ------------------------------------------------------------------
-        if (
-            myBuff[i] == 0x99    // Note on
-            || myBuff[i] == 0x89 // Note off
-            || myBuff[i] == 0xA9 // Aftertouch
+        else if (
+            midi_buffer[i] == 0x99    // Note on
+            || midi_buffer[i] == 0x89 // Note off
+            || midi_buffer[i] == 0xA9 // Aftertouch
         )
         {
-            // For the pads...
-            // Either we're in banks A_x, in which case we just remap the pad number
-            // Or we're in banks B, C, D, in which case we remap the message completely!
-            int pad_number = getMpcPadNumber(myBuff[i + 1]);
-            tklog_debug("Pad number is %d \n", pad_number);
-
-            // General case
-            switch (MPCPadMode)
-            {
-            case PAD_BANK_A:
-                myBuff[i + 1] = MPCPadToForceA[pad_number];
-                break;
-            case PAD_BANK_B:
-                myBuff[i + 1] = MPCPadToForceB[pad_number];
-                break;
-            case PAD_BANK_C:
-                myBuff[i + 1] = MPCPadToForceC[pad_number];
-                break;
-            case PAD_BANK_D:
-                myBuff[i + 1] = MPCPadToForceD[pad_number];
-                break;
-
-            default:
-                // We swallow Aftertouch messages
-                if (myBuff[i] == 0xA9)
-                {
-                    PrepareFakeMidiMsg(&myBuff[i]);
-                    i += 3;
-                    continue; // next msg
-                }
-
-                // Convert pad presses into button presses
-                // Convert myBuff[i+1] to pad number 0-15
-                // If we have a pad number, we can remap it, otherwise we just ignore the message
-                // myBuff[i] == 0x90;
-                switch (MPCPadMode)
-                {
-                case PAD_BANK_E:
-                    myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCPadToForceE[pad_number];
-                    myBuff[i] = 0x90;
-                    break;
-                case PAD_BANK_F:
-                    tklog_debug("...converting input %02x %02x %02x ...\n",
-                                myBuff[i], myBuff[i + 1], myBuff[i + 2]);
-                    myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCPadToForceF[pad_number];
-                    myBuff[i] = 0x90;
-                    tklog_debug("......to %02x %02x %02x\n",
-                                myBuff[i], myBuff[i + 1], myBuff[i + 2]);
-                    break;
-                case PAD_BANK_G:
-                    myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCPadToForceG[pad_number];
-                    myBuff[i] = 0x90;
-                    break;
-                case PAD_BANK_H:
-                    myBuff[i + 2] = myBuff[i] == 0x99 ? 0x7F : 0x00;
-                    myBuff[i + 1] = MPCPadToForceH[pad_number];
-                    myBuff[i] = 0x90;
-                    break;
-                }
-            }
-
-            // // Propagate message
-            // PrepareFakeMidiMsg(&myBuff[i]);
+            uint8_t pad_number = getMpcPadNumber(midi_buffer[i + 1]);
+            mpc_to_force_mapping_p = &MPCPadToForce[IAMForceStatus.pad_layout][pad_number];
+            if (mpc_to_force_mapping_p->callback != NULL)
+                i += mpc_to_force_mapping_p->callback(
+                    mpc_to_force_mapping_p,
+                    NULL,
+                    &midiBuffer[i],
+                    size - i);
         }
-        i += 3;
+
+        // Advance to the next byte 
+        // XXX ...or is it i+=3???
+        else
+            i += 1;
     }
 
     // Regular function return
@@ -1324,7 +1278,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 ///////////////////////////////////////////////////////////////////////////////
 void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 {
-    uint8_t *myBuff = (uint8_t *)midiBuffer;
+    uint8_t *midi_buffer = (uint8_t *)midiBuffer;
     size_t i = 0;
     uint8_t pad_to_update = 0x00;
 
@@ -1333,28 +1287,28 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         // AKAI SYSEX
         // If we detect the Akai sysex header, change the harwware id by our true hardware id.
         // Messages are compatibles. Some midi msg are not always interpreted (e.g. Oled)
-        if (myBuff[i] == 0xF0 && memcmp(&myBuff[i], AkaiSysex, sizeof(AkaiSysex)) == 0)
+        if (midi_buffer[i] == 0xF0 && memcmp(&midi_buffer[i], AkaiSysex, sizeof(AkaiSysex)) == 0)
         {
             // Update the sysex id in the sysex for our original hardware
             // tklog_debug("Inside Akai Sysex\n");
             i += sizeof(AkaiSysex);
-            myBuff[i] = DeviceInfoBloc[MPCOriginalId].sysexId;
+            midi_buffer[i] = DeviceInfoBloc[MPCOriginalId].sysexId;
             i++;
 
             // SET PAD COLORS SYSEX ------------------------------------------------
             // FN  F0 47 7F [3B] -> 65 00 04 [Pad #] [R] [G] [B] F7
             // Here, "pad #" is 0 for top-right pad, etc.
-            if (memcmp(&myBuff[i], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn)) == 0)
+            if (memcmp(&midi_buffer[i], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn)) == 0)
             {
                 i += sizeof(MPCSysexPadColorFn);
 
                 // Regular Pad
-                uint8_t padF = myBuff[i];
+                uint8_t padF = midi_buffer[i];
                 // tklog_debug("  [write] Inside Pad Color Sysex for pad %02x / r=%02x g=%02x b=%02x\n", padF,
-                //             myBuff[i + 1], myBuff[i + 2], myBuff[i + 3]);
+                //             midi_buffer[i + 1], midi_buffer[i + 2], midi_buffer[i + 3]);
 
                 // Project init! We detect if PAD0 is lit, if so we switch to bank A for good measure
-                if (!project_loaded && padF == 0 && (myBuff[i + 1] != 0 || myBuff[i + 2] != 0 || myBuff[i + 3] != 0))
+                if (!project_loaded && padF == 0 && (midi_buffer[i + 1] != 0 || midi_buffer[i + 2] != 0 || midi_buffer[i + 3] != 0))
                 {
                     tklog_debug("PROJECT INIT!! We go to bank C because we're in matrix mode");
                     {
@@ -1366,12 +1320,12 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 // Set matrix pad cache, update if we ought to update
                 pad_to_update = CacheForcePad(
                     padF,
-                    myBuff[i + 1],
-                    myBuff[i + 2],
-                    myBuff[i + 3]);
+                    midi_buffer[i + 1],
+                    midi_buffer[i + 2],
+                    midi_buffer[i + 3]);
 
                 // We completely change the destination pad
-                myBuff[i] = pad_to_update;
+                midi_buffer[i] = pad_to_update;
                 i += 5; // Next msg
             }
         }
@@ -1379,20 +1333,20 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         // Buttons-Leds.  In that direction, it's a LED ON / OFF for the button
         // AND/OR an additional PAD sysex!
         // Check if we must remap...
-        else if (myBuff[i] == 0xB0)
+        else if (midi_buffer[i] == 0xB0)
         {
             // Simple remapping
-            uint8_t original_button = myBuff[i + 1];
+            uint8_t original_button = midi_buffer[i + 1];
             uint8_t target_button = map_ButtonsLeds_Inv[original_button];
 
             if (target_button >= 0)
-                myBuff[i + 1] = target_button;
+                midi_buffer[i + 1] = target_button;
 
             // Very specific button treatments
             switch (original_button)
             {
             case FORCE_BT_TAP_TEMPO:
-                TapStatus = myBuff[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
+                TapStatus = midi_buffer[i + 2] == BUTTON_COLOR_RED_LIGHT ? false : true;
                 displayBatteryStatus();
                 break;
 
@@ -1405,24 +1359,24 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             case FORCE_BT_EDIT:
             case FORCE_BT_COPY:
             case FORCE_BT_DELETE:
-                switch (myBuff[i + 2])
+                switch (midi_buffer[i + 2])
                 {
                 case BUTTON_COLOR_RED_LIGHT:
-                    myBuff[i + 2] = BUTTON_COLOR_YELLOW_LIGHT;
+                    midi_buffer[i + 2] = BUTTON_COLOR_YELLOW_LIGHT;
                     break;
                 case BUTTON_COLOR_RED:
-                    myBuff[i + 2] = BUTTON_COLOR_YELLOW;
+                    midi_buffer[i + 2] = BUTTON_COLOR_YELLOW;
                     break;
                 }
             }
 
             // Complex remapping (from Force *NOTE NUMBER* to pad)
-            tklog_debug("...complex remapping of button %02x value %02x...\n", myBuff[i + 1], myBuff[i + 2]);
+            tklog_debug("...complex remapping of button %02x value %02x...\n", midi_buffer[i + 1], midi_buffer[i + 2]);
             // XXX SHOULD WE *ONLY* CONSIDER 0x7F OR ARE THERE NUANCES IN HERE?
-            if (myBuff[i + 2] == 0x7F)
-                SetForceMatrixButton(myBuff[i + 1], true);
+            if (midi_buffer[i + 2] == 0x7F)
+                SetForceMatrixButton(midi_buffer[i + 1], true);
             else
-                SetForceMatrixButton(myBuff[i + 1], false);
+                SetForceMatrixButton(midi_buffer[i + 1], false);
 
             // Next message
             i += 3;
@@ -1432,4 +1386,3 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             i++;
     }
 }
-
