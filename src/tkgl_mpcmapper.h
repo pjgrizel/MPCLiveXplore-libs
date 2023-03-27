@@ -72,39 +72,6 @@ __ __| |           |  /_) |     ___|             |           |\n\
 #define POWER_SUPPLY_STATUS "Full"
 #define POWER_SUPPLY_CAPACITY "100"
 
-// Colors R G B (nb . max r g b value is 7f. The bit 8 is always set )
-#define COLOR_WHITE 0x7F7F7F
-#define COLOR_BLACK 0x000000
-#define COLOR_RED 0x7F0000
-#define COLOR_BLUE 0x00007F
-#define COLOR_GREEN 0x007F00
-#define COLOR_YELLOW 0x7F7F00
-// #define COLOR_CYAN 0x007F7F
-// #define COLOR_MAGENTA 0x7F007F
-// #define COLOR_CORAL 0xFF0077
-#define COLOR_PINK 0xFFC0CB
-#define COLOR_FIRE       0x060101
-#define COLOR_TANGERINE  0x060201
-#define COLOR_APRICOT    0x7F5019
-#define COLOR_CANARY     0x7F6E19
-#define COLOR_LEMON      0x757F19
-#define COLOR_CHARTREUSE 0x5A7F19
-#define COLOR_NEON       0x3B7F19
-#define COLOR_LIME       0x207F19
-#define COLOR_CLOVER     0x197F2E
-#define COLOR_SEA        0x197F4C
-#define COLOR_MINT       0x197F68
-#define COLOR_CYAN       0x197C7F
-#define COLOR_SKY        0x195D7F
-#define COLOR_AZURE      0x19427F
-#define COLOR_MIDNIGHT   0x19277F
-#define COLOR_INDIGO     0x3A197F
-#define COLOR_VIOLET     0x46197F
-#define COLOR_GRAPE      0x60197F
-#define COLOR_FUSHIA     0x7F197F
-#define COLOR_MAGENTA    0x7F1964
-#define COLOR_CORAL      0x7F1949
-
 // Mute pads mod button value
 #define FORCE_ASSIGN_A 123
 #define FORCE_ASSIGN_B 124
@@ -128,8 +95,8 @@ __ __| |           |  /_) |     ___|             |           |\n\
 
 // Button colors
 #define BUTTON_COLOR_OFF          0x00
-#define BUTTON_COLOR_RED_LIGHT    0x01
-#define BUTTON_COLOR_YELLOW_LIGHT 0x02
+#define BUTTON_COLOR_LIGHT_RED    0x01
+#define BUTTON_COLOR_LIGHT_YELLOW 0x02
 #define BUTTON_COLOR_RED          0x03
 #define BUTTON_COLOR_YELLOW       0x04
 #define BUTTON_COLOR_YELLOW_RED   0x05
