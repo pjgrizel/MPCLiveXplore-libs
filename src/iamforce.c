@@ -36,6 +36,28 @@ IAMForceStatus_t IAMForceStatus = {
 };
 IAMForceStatus_t IAMForceRestStatus;
 
+typedef struct MPCControlToForce_s {
+    uint8_t note_number;
+    PadColor_t color;
+    MPCControlCallback_t callback;
+    // size_t (*callback)(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size);
+} MPCControlToForce_t;
+
+typedef struct ForceControlToMPC_s
+{
+    // uint8_t type;                    // Destination is either BTN, PAD or CUS
+    uint8_t note_number; // note number ; 8th bit to 1 if PAD
+    uint8_t bank;        // ...only if 'PAD'
+    PadColor_t color;    // The pad color if it has to be redefined.
+                         // Only partial values will be authorized for buttons
+                         // If it's a button, only RED, LIGHT_RED,
+                         // YELLOW, LIGHT_YELLOW and ORANGE are allowed
+    MPCControlCallback_t callback;
+    ForceControlToMPC_t *next_control; // allow easy chaining of controls
+} ForceControlToMPC_t;
+
+
+
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
 // Also, the numbers are those of a NOTE NUMBER, not the pad sysex!
