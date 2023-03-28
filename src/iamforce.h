@@ -6,10 +6,11 @@
 // Debug macro
 // #define DEBUG 1
 // #ifdef DEBUG
-    #define LOG_DEBUG(fmt, ...) printf("[ DEBUG       ] %s:%s:%d "fmt"\n", basename(__FILE__), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) printf("[ DEBUG       ] %s:%s:%d " fmt "\n", basename(__FILE__), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__)
 // #else
-    // #define LOG_DEBUG(fmt, ...) do {} while (0)
+// #define LOG_DEBUG(fmt, ...) do {} while (0)
 // #endif
+#define LOG_ERROR(fmt, ...) printf("[ ** ERROR ** ] %s:%s:%d " fmt "\n", basename(__FILE__), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 #define PadColor_t uint32_t
 
@@ -130,12 +131,12 @@ size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_targe
 #define BATTERY_CHECK_INTERVAL 10 // Check battery status every 10 tap ticks
 
 // Basic assignments
-#define FORCE_BT_ENCODER 0x6F // ok
-#define FORCE_BT_NAVIGATE 0x00   // ok
-#define FORCE_BT_KNOBS 0x01      // ok
-#define FORCE_BT_MENU 0x02       // ok
-#define FORCE_BT_MATRIX 0x03     // ok
-#define FORCE_BT_NOTE 0x04       // ok
+#define FORCE_BT_ENCODER 0x6F  // ok
+#define FORCE_BT_NAVIGATE 0x00 // ok
+#define FORCE_BT_KNOBS 0x01    // ok
+#define FORCE_BT_MENU 0x02     // ok
+#define FORCE_BT_MATRIX 0x03   // ok
+#define FORCE_BT_NOTE 0x04     // ok
 #define FORCE_BT_MASTER 0x05
 #define FORCE_BT_CLIP 0x09
 #define FORCE_BT_MIXER 0x0B
@@ -233,7 +234,6 @@ size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_targe
 #define LIVEII_PAD_MIXER 0x73
 #define LIVEII_TRACK_MUTE 0x75
 #define LIVEII_TRACK_MIXER 0x74
-
 
 // Pads in top-left=0 order
 #define LIVEII_PAD_TL0 0x31

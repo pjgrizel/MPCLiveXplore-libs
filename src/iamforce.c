@@ -36,7 +36,8 @@ IAMForceStatus_t IAMForceStatus = {
 };
 IAMForceStatus_t IAMForceRestStatus;
 
-typedef struct MPCControlToForce_s {
+typedef struct MPCControlToForce_s
+{
     uint8_t note_number;
     PadColor_t color;
     MPCControlCallback_t callback;
@@ -55,8 +56,6 @@ typedef struct ForceControlToMPC_s
     MPCControlCallback_t callback;
     ForceControlToMPC_t *next_control; // allow easy chaining of controls
 } ForceControlToMPC_t;
-
-
 
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
@@ -219,8 +218,7 @@ MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0c].note_number = FORCE_BT_MUTE_PAD5,
         [0x0d].note_number = FORCE_BT_MUTE_PAD6,
         [0x0e].note_number = FORCE_BT_MUTE_PAD7,
-        [0x0f].note_number = FORCE_BT_MUTE_PAD8
-    },
+        [0x0f].note_number = FORCE_BT_MUTE_PAD8},
     // IAMFORCE_LAYOUT_PAD_COLS
     {
         [0x00].note_number = FORCE_BT_UNSET,
@@ -323,13 +321,10 @@ static ForceControlToMPC_t ForceControlToMPC[CONTROL_TABLE_SIZE] = {
     [FORCE_BT_NOTE].callback = cb_edit_button,
     [FORCE_BT_MUTE].callback = cb_edit_button,
     [FORCE_BT_REC_ARM].callback = cb_edit_button,
-    [FORCE_BT_CLIP_STOP].callback = cb_edit_button
-};
+    [FORCE_BT_CLIP_STOP].callback = cb_edit_button};
 
 static uint8_t ForceControlToMPCExtraNext = 0x80;                             // Next available index
 static uint8_t ForceControlToMPCExtraMax = 0x80 + FORCEPADS_TABLE_IDX_OFFSET; // Max index
-
-
 
 // These are the matrices where actual RGB values are stored
 // They are initialized at start time and populated in the Write function
@@ -347,8 +342,7 @@ void invertMPCToForceMapping()
         .bank = 0xff,
         .color = COLOR_WHITE,
         .callback = NULL,
-        .next_control = NULL
-    };
+        .next_control = NULL};
     uint8_t mpc_note_number = 0xFF;
 
     // Initialize global mapping tables to 0 (just in case)
@@ -381,7 +375,7 @@ void invertMPCToForceMapping()
                 if (ForceControlToMPCExtraNext < ForceControlToMPCExtraMax)
                     ForceControlToMPCExtraNext++;
                 else
-                    tklog_error("Can't increment ForceControlToMPCExtraNext, you have too many buttons with multiple combinations");
+                    LOG_ERROR("Can't increment ForceControlToMPCExtraNext, you have too many buttons with multiple combinations");
             }
 
             // Save mapping
@@ -413,7 +407,7 @@ void invertMPCToForceMapping()
             if (ForceControlToMPCExtraNext < ForceControlToMPCExtraMax)
                 ForceControlToMPCExtraNext++;
             else
-                tklog_error("Can't increment ForceControlToMPCExtraNext, you have too many buttons with multiple combinations");
+                LOG_ERROR("Can't increment ForceControlToMPCExtraNext, you have too many buttons with multiple combinations");
         }
 
         // Save mapping
@@ -461,7 +455,7 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
     else if (buffer_size >= 6 && memcmp(&midi_buffer[0], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn)) == 0)
         source_type = source_pad_sysex;
     else
-        tklog_error("Unknown source type (1st buffer byte = %02x)", midi_buffer[0]);
+        LOG_ERROR("Unknown source type (1st buffer byte = %02x)", midi_buffer[0]);
 
     // SET PAD COLORS SYSEX ------------------------------------------------
     //                      v----- We start our midi buffer HERE, our pad # will be at i + sizeof(MPCSysexPadColorFn)
@@ -605,7 +599,7 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
             // FORCE PAD =======> MPC BUTTON
             else
             {
-                tklog_error("PAD SYSEX message from Force to MPC button => ignored");
+                LOG_ERROR("PAD SYSEX message from Force to MPC button => ignored");
             }
             break;
 
@@ -627,7 +621,7 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
     case source_pad_sysex:
         return PAD_SYSEX_MESSAGE_LENGTH;
     default:
-        tklog_error("Unknown source type (1st buffer byte = %02x)", midi_buffer[0]);
+        LOG_ERROR("Unknown source type (1st buffer byte = %02x)", midi_buffer[0]);
         return 1; // We return 1 to avoid infinite loops!!
     }
 }
@@ -648,7 +642,7 @@ size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_
     // If buffer is too small, we can't do much about it
     if (buffer_size < 3)
     {
-        tklog_error("Buffer too small for tap callback");
+        LOG_ERROR("Buffer too small for tap callback");
         return 1;
     }
 
@@ -792,8 +786,6 @@ size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_targe
     return buffer_size;
 }
 
-
-
 /**************************************************************************
  *                                                                        *
  *  MPC Pads management                                                   *
@@ -828,13 +820,12 @@ void LoadMapping()
     // Dump mapping (ForceControlToMPC)
     for (int i = 0; i < CONTROL_TABLE_SIZE; i++)
     {
-        LOG_DEBUG("ForceControlToMPC[%02x] = %02x.%02x // %p %p", 
-            i, 
-            ForceControlToMPC[i].bank,
-            ForceControlToMPC[i].note_number,
-            ForceControlToMPC[i].callback,
-            ForceControlToMPC[i].next_control
-        );
+        LOG_DEBUG("ForceControlToMPC[%02x] = %02x.%02x // %p %p",
+                  i,
+                  ForceControlToMPC[i].bank,
+                  ForceControlToMPC[i].note_number,
+                  ForceControlToMPC[i].callback,
+                  ForceControlToMPC[i].next_control);
     }
 
     // Initialize all pads caches (at load-time, we consider they are black)
@@ -863,7 +854,7 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 // {
 //     if (layout >= IAMFORCE_LAYOUT_N || pad_number >= 16)
 //     {
-//         tklog_error("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x) - invalid matrix or pad number   \n", layout, pad_number);
+//         LOG_ERROR("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x) - invalid matrix or pad number   \n", layout, pad_number);
 //         return;
 //     }
 //     // LOG_DEBUG("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x)\n", matrix, pad_number);
@@ -1150,7 +1141,7 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
     // Double-check input data
     if (padL > 3 || padC > 3)
     {
-        tklog_error("MPC Pad Line refresh : wrong pad number %d %d", padL, padC);
+        LOG_ERROR("MPC Pad Line refresh : wrong pad number %d %d", padL, padC);
         return;
     }
 
@@ -1281,7 +1272,7 @@ uint8_t getMPCPadNoteNumber(uint8_t pad_number)
     case 15:
         return LIVEII_PAD_TL15;
     default:
-        tklog_error("Invalid pad number: %02x", pad_number);
+        LOG_ERROR("Invalid pad number: %02x", pad_number);
         return 0xFF;
     }
 }
@@ -1310,64 +1301,64 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 
     while (i < size)
     {
-        switch(midi_buffer[i])
+        switch (midi_buffer[i])
         {
-            // AKAI SYSEX ------------------------------------------------------------
-            // IDENTITY REQUEST
-            case 0xF0:
-                // Spoof identity
-                if (memcmp(&midi_buffer[i], IdentityReplySysexHeader, sizeof(IdentityReplySysexHeader)) == 0)
-                {
-                    // If so, substitue sysex identity request by the faked one
-                    LOG_DEBUG("Identity request");
-                    memcpy(&midi_buffer[i + sizeof(IdentityReplySysexHeader)], DeviceInfoBloc[MPCId].sysexIdReply, sizeof(DeviceInfoBloc[MPCId].sysexIdReply));
-                    i += sizeof(IdentityReplySysexHeader) + sizeof(DeviceInfoBloc[MPCId].sysexIdReply);
-                }
+        // AKAI SYSEX ------------------------------------------------------------
+        // IDENTITY REQUEST
+        case 0xF0:
+            // Spoof identity
+            if (memcmp(&midi_buffer[i], IdentityReplySysexHeader, sizeof(IdentityReplySysexHeader)) == 0)
+            {
+                // If so, substitue sysex identity request by the faked one
+                LOG_DEBUG("Identity request");
+                memcpy(&midi_buffer[i + sizeof(IdentityReplySysexHeader)], DeviceInfoBloc[MPCId].sysexIdReply, sizeof(DeviceInfoBloc[MPCId].sysexIdReply));
+                i += sizeof(IdentityReplySysexHeader) + sizeof(DeviceInfoBloc[MPCId].sysexIdReply);
+            }
 
-                // Consume the rest of the message until 0xF7 is found (end of sysex)
-                while (i < size && midi_buffer[i] != 0xF7)
-                    i++;
-                break;
+            // Consume the rest of the message until 0xF7 is found (end of sysex)
+            while (i < size && midi_buffer[i] != 0xF7)
+                i++;
+            break;
 
-            // KNOBS TURN (UNMAPPED BECAUSE ARE ALL EQUIVALENT ON ALL DEVICES) ------
-            case 0xB0:
-                // If it's a shift + knob turn, add an offset
-                //  B0 [10-31] [7F - n]
-                if (IAMForceStatus.shift_hold && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16 && midi_buffer[i + 1] >= 0x10 && midi_buffer[i + 1] <= 0x31)
-                    midi_buffer[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
-                i += 3;
-                break;
+        // KNOBS TURN (UNMAPPED BECAUSE ARE ALL EQUIVALENT ON ALL DEVICES) ------
+        case 0xB0:
+            // If it's a shift + knob turn, add an offset
+            //  B0 [10-31] [7F - n]
+            if (IAMForceStatus.shift_hold && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16 && midi_buffer[i + 1] >= 0x10 && midi_buffer[i + 1] <= 0x31)
+                midi_buffer[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
+            i += 3;
+            break;
 
-            // BUTTONS -----------------------------------------------------------------
-            case 0x90:
-                // Apply mapping, call the callback function
-                mpc_to_force_mapping_p = &MPCButtonToForce[midi_buffer[i + 1]];
-                if (mpc_to_force_mapping_p->callback != NULL)
-                    i += mpc_to_force_mapping_p->callback(
-                        mpc_to_force_mapping_p,
-                        NULL,
-                        &midi_buffer[i],
-                        size - i);
-                break;
+        // BUTTONS -----------------------------------------------------------------
+        case 0x90:
+            // Apply mapping, call the callback function
+            mpc_to_force_mapping_p = &MPCButtonToForce[midi_buffer[i + 1]];
+            if (mpc_to_force_mapping_p->callback != NULL)
+                i += mpc_to_force_mapping_p->callback(
+                    mpc_to_force_mapping_p,
+                    NULL,
+                    &midi_buffer[i],
+                    size - i);
+            break;
 
-            // PADS -------------------------------------------------------------------
-            case 0x99:
-            case 0x89:
-            case 0xA9:
-                uint8_t pad_number = getMPCPadNumber(midi_buffer[i + 1]);
-                mpc_to_force_mapping_p = &MPCPadToForce[IAMForceStatus.pad_layout][pad_number];
-                if (mpc_to_force_mapping_p->callback != NULL)
-                    i += mpc_to_force_mapping_p->callback(
-                        mpc_to_force_mapping_p,
-                        NULL,
-                        &midi_buffer[i],
-                        size - i);
+        // PADS -------------------------------------------------------------------
+        case 0x99:
+        case 0x89:
+        case 0xA9:
+            uint8_t pad_number = getMPCPadNumber(midi_buffer[i + 1]);
+            mpc_to_force_mapping_p = &MPCPadToForce[IAMForceStatus.pad_layout][pad_number];
+            if (mpc_to_force_mapping_p->callback != NULL)
+                i += mpc_to_force_mapping_p->callback(
+                    mpc_to_force_mapping_p,
+                    NULL,
+                    &midi_buffer[i],
+                    size - i);
 
-            default:
-                // Nothing to do here, we consume the byte and go to the next
-                // TODO: implement a "discard" function looking at status byte?                
-                i += 1;
-                break;
+        default:
+            // Nothing to do here, we consume the byte and go to the next
+            // TODO: implement a "discard" function looking at status byte?
+            i += 1;
+            break;
 
             // XXX TODO: add qlink management
             // Qlink management is hard coded
@@ -1461,13 +1452,16 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         // iterating on each callback if needed
         else if (midi_buffer[i] == 0xB0)
         {
-            LOG_DEBUG("B0 0x%02x 0x%02x", midi_buffer[i + 1], midi_buffer[i + 2]);
             note_number = midi_buffer[i + 1];
             force_to_mpc_mapping_p = &ForceControlToMPC[note_number];
-            LOG_DEBUG("Mapping: 0x%02x -> %p", note_number, force_to_mpc_mapping_p);
             while (force_to_mpc_mapping_p != NULL)
             {
-                LOG_DEBUG("   Calling callback %p", force_to_mpc_mapping_p->callback);
+                if (force_to_mpc_mapping_p->callback == NULL)
+                {
+                    LOG_DEBUG("NULL callback for Force note %02x", note_number);
+                    callback_i = 3;
+                    break;
+                }
                 callback_i = force_to_mpc_mapping_p->callback(
                     NULL,
                     force_to_mpc_mapping_p,
