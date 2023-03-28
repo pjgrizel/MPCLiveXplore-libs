@@ -1,4 +1,3 @@
-
 #define _GNU_SOURCE
 #include <stdint.h>
 #include <sys/mman.h>
@@ -26,8 +25,11 @@
 // Global status / Rest status
 // Initial status
 IAMForceStatus_t IAMForceStatus = {
-    .pad_layout = IAMFORCE_LAYOUT_N,
+    .pad_layout = IAMFORCE_LAYOUT_NONE,
     .force_mode = MPC_FORCE_MODE_NONE,
+    .launch_mode_layout = IAMFORCE_LAYOUT_PAD_BANK_A,
+    .stepseq_mode_layout = IAMFORCE_LAYOUT_PAD_BANK_A,
+    .note_mode_layout = IAMFORCE_LAYOUT_PAD_BANK_C,
     .mode_buttons = 0,
     .tap_status = false,
     .last_button_down = 0,
@@ -36,32 +38,22 @@ IAMForceStatus_t IAMForceStatus = {
 };
 IAMForceStatus_t IAMForceRestStatus;
 
-typedef struct MPCControlToForce_s
-{
-    uint8_t note_number;
-    PadColor_t color;
-    MPCControlCallback_t callback;
-    // size_t (*callback)(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size);
-} MPCControlToForce_t;
-
-typedef struct ForceControlToMPC_s
-{
-    // uint8_t type;                    // Destination is either BTN, PAD or CUS
-    uint8_t note_number; // note number ; 8th bit to 1 if PAD
-    uint8_t bank;        // ...only if 'PAD'
-    PadColor_t color;    // The pad color if it has to be redefined.
-                         // Only partial values will be authorized for buttons
-                         // If it's a button, only RED, LIGHT_RED,
-                         // YELLOW, LIGHT_YELLOW and ORANGE are allowed
-    MPCControlCallback_t callback;
-    ForceControlToMPC_t *next_control; // allow easy chaining of controls
-} ForceControlToMPC_t;
+// Default length of messages
+uint_fast8_t SOURCE_MESSAGE_LENGTH[7] = {
+    3, // source_button
+    3, // source_led
+    3, // source_pad_note_on
+    3, // source_pad_note_off
+    3, // source_pad_aftertouch
+    7, // source_pad_sysex
+    1  // source_unkown
+};
 
 // FORCE starts from top-left, MPC start from BOTTOM-left
 // These matrix are MPC => Force (not the other way around)
 // Also, the numbers are those of a NOTE NUMBER, not the pad sysex!
 // Pad sysex will be deduced at runtime.
-MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
+static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
     // Pad bank A
     {
         // First line (the top line)
@@ -326,6 +318,7 @@ static ForceControlToMPC_t ForceControlToMPC[CONTROL_TABLE_SIZE] = {
 static uint8_t ForceControlToMPCExtraNext = 0x80;                             // Next available index
 static uint8_t ForceControlToMPCExtraMax = 0x80 + FORCEPADS_TABLE_IDX_OFFSET; // Max index
 
+
 // These are the matrices where actual RGB values are stored
 // They are initialized at start time and populated in the Write function
 // And they are given with their index
@@ -422,372 +415,6 @@ void invertMPCToForceMapping()
 
 /**************************************************************************
  *                                                                        *
- *  Callbacks                                                             *
- *                                                                        *
- **************************************************************************/
-
-size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
-{
-    size_t i = 0;
-    enum
-    {
-        source_button,       // This is button press
-        source_led,          // This is button *LED*
-        source_pad_note_on,  // Channel will be different
-        source_pad_note_off, // Channel will be different
-        source_aftertouch,   // Channel will be different
-        source_pad_sysex,
-        source_unkown
-    };
-    uint8_t source_type = source_unkown;
-
-    // Guess source type
-    if (buffer_size >= 3 && midi_buffer[0] == 0x90)
-        source_type = source_button; // Note on on channel 1
-    else if (buffer_size >= 3 && midi_buffer[0] == 0x99)
-        source_type = source_pad_note_on; // Note on on channel 10 (pads)
-    else if (buffer_size >= 3 && midi_buffer[0] == 0x89)
-        source_type = source_pad_note_off;               // Note off on channel 10 (pads)
-    else if (buffer_size >= 3 && midi_buffer[0] == 0xA9) // Aftertouch on channel 10
-        source_type = source_aftertouch;
-    else if (buffer_size >= 3 && midi_buffer[0] == 0xB0) // CC on channel 1
-        source_type = source_led;
-    else if (buffer_size >= 6 && memcmp(&midi_buffer[0], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn)) == 0)
-        source_type = source_pad_sysex;
-    else
-        LOG_ERROR("Unknown source type (1st buffer byte = %02x)", midi_buffer[0]);
-
-    // SET PAD COLORS SYSEX ------------------------------------------------
-    //                      v----- We start our midi buffer HERE, our pad # will be at i + sizeof(MPCSysexPadColorFn)
-    // FN  F0 47 7F [3B] -> 65 00 04 [Pad #] [R] [G] [B] F7
-    // Here, "pad #" is 0 for top-right pad, etc.
-    // XXX NOTA: due to the callback function signature, there are duplicate processes here.
-    // XXX in particular, we have to check the buffer size twice, compare Sysex signature, twice, etc.
-    // XXX Not sure the processing overhead is worth the pain of having richer and more complex function signature?
-
-    // MPC ======> FORCE (this is the easy side!)
-    // We skip unconfigured buttons
-    if (force_target != NULL && force_target->note_number != 0xff)
-    {
-        switch (source_type)
-        {
-        // We remap the note number AND channel.
-        case source_pad_note_on:
-            midi_buffer[0] = (force_target->note_number >= 0x80 ? 0x99 : 0x90);
-            midi_buffer[1] = (force_target->note_number >= 0x80 ? force_target->note_number - 0x80 : force_target->note_number);
-            break;
-        case source_pad_note_off: // XXX do we *HAVE* to do this??
-            midi_buffer[0] = (force_target->note_number >= 0x80 ? 0x89 : 0x80);
-            midi_buffer[1] = (force_target->note_number >= 0x80 ? force_target->note_number - 0x80 : force_target->note_number);
-            break;
-        case source_button:
-            // Then we remap the note number.
-            // NOTA: it makes no sense to send a button message to a Force Pad, so we ignore this case
-            if (force_target->note_number >= 0x80)
-            {
-                LOG_DEBUG("Button message from MPC to Force Pad => ignored");
-                FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
-            }
-            else
-            {
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = force_target->note_number;
-            }
-            break;
-        case source_aftertouch:
-            // We only transmit aftertouch messages for PAD destinations
-            if (force_target->note_number >= 0x80)
-            {
-                midi_buffer[0] = 0xA9;
-                midi_buffer[1] = force_target->note_number - 0x80;
-            }
-            else
-            {
-                LOG_DEBUG("Aftertouch message from Force to MPC => ignored");
-                FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
-            }
-            break;
-        case source_led:
-            // Why would we even transmit LED to Force?!
-            LOG_DEBUG("LED message from MPC to Force => ignored");
-            FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
-            break;
-        case source_pad_sysex:
-            // Why would we even transmit PAD COLOR to Force?!
-            LOG_DEBUG("LED message from MPC to Force => ignored");
-            FakeMidiMessage(&midi_buffer[i], PAD_SYSEX_MESSAGE_LENGTH);
-            break;
-        default:
-            // Meh. We transmit anyway (why not?)
-            break;
-        }
-    }
-
-    // Force ====> MPC
-    // This is more complicated because it's where SYSEX magic happens.
-    else if (mpc_target != NULL && mpc_target->note_number != 0xff)
-    {
-        switch (source_type)
-        {
-        // Ok, pad note or buttons. This just doesn't make sense. Ignore.
-        case source_pad_note_on:
-        case source_pad_note_off:
-        case source_aftertouch:
-        case source_button:
-            LOG_DEBUG("Pad note message from Force to MPC => ignored");
-            FakeMidiMessage(&midi_buffer[i], NOTE_MESSAGE_LENGTH);
-            break;
-
-        // Led. Interesting case.
-        // If destination is a *note*, we just remap and adjust colors.
-        // If destination is a *pad*, we store in the pad color buffer.
-        case source_led:
-            if (mpc_target->note_number < 0x80)
-            {
-                // We just remap the note number and color
-                midi_buffer[1] = mpc_target->note_number;
-
-                switch (mpc_target->color)
-                {
-                case COLOR_RED:
-                    midi_buffer[2] = BUTTON_COLOR_RED;
-                    break;
-                case COLOR_YELLOW:
-                    midi_buffer[2] = BUTTON_COLOR_YELLOW;
-                    break;
-                case COLOR_LIGHT_RED:
-                    midi_buffer[2] = BUTTON_COLOR_LIGHT_RED;
-                    break;
-                case COLOR_LIGHT_YELLOW:
-                    midi_buffer[2] = BUTTON_COLOR_LIGHT_YELLOW;
-                    break;
-                case COLOR_ORANGE:
-                    midi_buffer[2] = BUTTON_COLOR_YELLOW_RED;
-                    break;
-                default:
-                    midi_buffer[2] = BUTTON_COLOR_RED;
-                    break;
-                }
-            }
-            else
-            {
-                // Target is a pad! We store the color in the pad color buffer.
-                // We are in LED update mode so we can refresh it on the spot.
-                SetLayoutPad(
-                    mpc_target->bank,
-                    mpc_target->note_number - 0x80,
-                    mpc_target->color,
-                    true);
-            }
-
-        case source_pad_sysex:
-            // FORCE PAD ==========> MPC PAD (easy)
-            // We are in PAD COLOR update mode so we won't draw it,
-            // but we will store it in the pad color buffer.
-            if (mpc_target->note_number >= 0x80)
-            {
-                if (SetLayoutPad(
-                        mpc_target->bank,
-                        mpc_target->note_number - 0x80,
-                        mpc_target->color,
-                        false))
-                {
-                    midi_buffer[3] = mpc_target->note_number - 0x80;
-                    // XXX TODO: change color?
-                }
-            }
-            // FORCE PAD =======> MPC BUTTON
-            else
-            {
-                LOG_ERROR("PAD SYSEX message from Force to MPC button => ignored");
-            }
-            break;
-
-        default:
-            // Meh. We transmit anyway (why not?)
-            break;
-        }
-    }
-
-    // Return the proper bytes amount
-    switch (source_type)
-    {
-    case source_button:
-    case source_pad_note_on:
-    case source_pad_note_off:
-    case source_led:
-    case source_aftertouch:
-        return NOTE_MESSAGE_LENGTH;
-    case source_pad_sysex:
-        return PAD_SYSEX_MESSAGE_LENGTH;
-    default:
-        LOG_ERROR("Unknown source type (1st buffer byte = %02x)", midi_buffer[0]);
-        return 1; // We return 1 to avoid infinite loops!!
-    }
-}
-
-size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
-{
-    // The tools of the trade
-    int fd;
-    uint8_t capacity = 0;
-    uint8_t blink = 0;
-    uint8_t other_leds = 0x01;
-    char buffer[16];
-    char intBuffer[4];
-    uint8_t battery_status;
-    ssize_t bytesRead;
-    uint8_t scale;
-
-    // If buffer is too small, we can't do much about it
-    if (buffer_size < 3)
-    {
-        LOG_ERROR("Buffer too small for tap callback");
-        return 1;
-    }
-
-    // Store status
-    IAMForceStatus.tap_status = midi_buffer[2] == BUTTON_COLOR_LIGHT_RED ? false : true;
-
-    // Once every 10 taps, update battery light
-    if (IAMForceStatus.tap_counter == 0)
-    {
-        // Read battery_ value from fp capacity
-        // Convert the string to an integer
-        fd = orig_open64(POWER_SUPPLY_CAPACITY_PATH, O_RDONLY);
-        bytesRead = read(fd, buffer, 6);
-        orig_close(fd);
-        memcpy(intBuffer, buffer, 3);
-        intBuffer[bytesRead] = '\0';
-        capacity = atoi(intBuffer);
-        scale = capacity * 8 / 100;
-
-        // Read battery status from POWER_SUPPLY_STATUS_PATH
-        // If it's "Charging", we display a charging icon (kind of)
-        fd = orig_open64(POWER_SUPPLY_STATUS_PATH, O_RDONLY);
-        bytesRead = read(fd, buffer, 9);
-        orig_close(fd);
-        buffer[bytesRead] = '\0';
-        if (strcmp(buffer, "Charging\n") == 0)
-        {
-            battery_status = BATTERY_CHARGING;
-            other_leds = 0x02;
-        }
-        else if (strcmp(buffer, "Full\n") == 0)
-        {
-            battery_status = BATTERY_FULL;
-            other_leds = 0x02;
-        }
-
-        // If battery is currently charging, we make the last light blink
-        // by decreasing the scale by 1
-        if (battery_status == BATTERY_CHARGING && !IAMForceStatus.tap_status && scale > 0)
-            blink = 1;
-
-        // Reset lights
-        uint8_t light_1[] = {0xB0, 0x5A, 0x00};
-        uint8_t light_2[] = {0xB0, 0x5B, 0x00};
-        uint8_t light_3[] = {0xB0, 0x5C, 0x00};
-        uint8_t light_4[] = {0xB0, 0x5D, 0x00};
-
-        // Handle 'current' light
-        switch (scale)
-        {
-        case 0:
-            break;
-        case 1:
-            light_1[2] = 0x01 - blink;
-            break;
-        case 2:
-            light_1[2] = 0x02 - blink;
-            break;
-        case 3:
-            light_1[2] = other_leds;
-            light_2[2] = 0x01 - blink;
-            break;
-        case 4:
-            light_1[2] = other_leds;
-            light_2[2] = 0x02 - blink;
-            break;
-        case 5:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = 0x01 - blink;
-            break;
-        case 6:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = 0x02 - blink;
-            break;
-        case 7:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = other_leds;
-            light_4[2] = 0x01 - blink;
-            break;
-        case 8:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = other_leds;
-            light_4[2] = 0x02 - blink;
-            break;
-        }
-
-        // Let's write it to the private ports
-        if (
-            IAMForceStatus.battery_status != battery_status || IAMForceStatus.battery_capacity != capacity)
-        {
-            // Update lights
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_2, sizeof(light_2));
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_3, sizeof(light_3));
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_4, sizeof(light_4));
-
-            // Store current status
-            IAMForceStatus.battery_status = battery_status;
-            IAMForceStatus.battery_capacity = capacity;
-        }
-    }
-
-    // Handle counter, increment buffer
-    IAMForceStatus.tap_counter++;
-    if (IAMForceStatus.tap_counter == BATTERY_CHECK_INTERVAL)
-        IAMForceStatus.tap_counter = 0;
-    return 3;
-}
-
-size_t cb_mode_e(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
-{
-    FakeMidiMessage(midi_buffer, buffer_size);
-    return buffer_size;
-}
-
-size_t cb_xfader(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
-{
-    FakeMidiMessage(midi_buffer, buffer_size);
-    return buffer_size;
-}
-
-size_t cb_shift(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
-{
-    FakeMidiMessage(midi_buffer, buffer_size);
-    return buffer_size;
-}
-
-size_t cb_edit_button(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
-{
-    FakeMidiMessage(midi_buffer, buffer_size);
-    return buffer_size;
-}
-
-size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, uint8_t *midi_buffer, size_t buffer_size)
-{
-    FakeMidiMessage(midi_buffer, buffer_size);
-    return buffer_size;
-}
-
-/**************************************************************************
- *                                                                        *
  *  MPC Pads management                                                   *
  *                                                                        *
  **************************************************************************/
@@ -849,286 +476,11 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
     memset(buf, 0x00, size);
 }
 
-// // Completely redraw a matrix according to its cache value
-// void DrawPadLayoutFromCache(uint8_t layout, uint8_t pad_number)
-// {
-//     if (layout >= IAMFORCE_LAYOUT_N || pad_number >= 16)
-//     {
-//         LOG_ERROR("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x) - invalid matrix or pad number   \n", layout, pad_number);
-//         return;
-//     }
-//     // LOG_DEBUG("DrawMatrixPadFromCache(matrix=%02x, pad_number=%02x)\n", matrix, pad_number);
 
-//     // Get pad coordinates
-//     uint8_t padL = pad_number / 4;
-//     uint8_t padC = pad_number % 4;
-
-//     // Do we *HAVE* to color this pad?
-//     if (layout != IAMForceStatus.pad_layout)
-//     {
-//         LOG_DEBUG("  ...We ignore repainting message for matrix %02x, pad number %02x\n", layout, pad_number);
-//         return;
-//     }
-
-//     // Find the pad color as it's stored
-//     SetPadColor(padL, padC, MPCPadValues[layout][pad_number]);
-// }
-
-// // //////////////////////////////////////////////////////////////////
-// // Bank buttons management
-// // //////////////////////////////////////////////////////////////////
-// void MPCSwitchBankMode(uint8_t bank_button, bool key_down)
-// {
-//     struct timespec now;
-//     uint8_t selected_bank_mask;
-//     uint64_t down_duration;
-//     bool is_click = false;        // down -> up in less than 0.5s
-//     bool is_double_click = false; // down -> up -> down in less than 0.5s
-//     uint8_t current_bank_layer_mask = (MPCPadMode & 0x0f) ? PAD_BANK_ABCD : PAD_BANK_EFGH;
-//     int8_t permanent_mode_mask = PermanentMode & PAD_BANK_ABCD ? PAD_BANK_ABCD : PAD_BANK_EFGH;
-
-//     // Convert bank_button to bank_pad
-//     switch (bank_button)
-//     {
-//     case LIVEII_BT_BANK_A:
-//         selected_bank_mask = PAD_BANK_A | PAD_BANK_E;
-//         break;
-//     case LIVEII_BT_BANK_B:
-//         selected_bank_mask = PAD_BANK_B | PAD_BANK_F;
-//         break;
-//     case LIVEII_BT_BANK_C:
-//         selected_bank_mask = PAD_BANK_C | PAD_BANK_G;
-//         break;
-//     case LIVEII_BT_BANK_D:
-//         selected_bank_mask = PAD_BANK_D | PAD_BANK_H;
-//         break;
-//     }
-
-//     // Handle click / hold / doubleclick stuff
-//     clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-//     if (LastKeyDownBankButton == bank_button)
-//     {
-//         down_duration = (now.tv_sec - started_down.tv_sec) * 1000 + (now.tv_nsec - started_down.tv_nsec) / 1000000;
-//         if (key_down)
-//         {
-//             if (down_duration < DOUBLE_CLICK_DELAY)
-//             {
-//                 is_double_click = true;
-//                 started_down.tv_sec = 0; // Avoid mixing double clicks and click at release
-//             }
-//         }
-//         else
-//         {
-//             if (down_duration < HOLD_DELAY)
-//                 is_click = true;
-//         }
-//     }
-//     LastKeyDownBankButton = bank_button;
-//     if (key_down)
-//     {
-//         clock_gettime(CLOCK_MONOTONIC_RAW, &started_down);
-//         DownBankMask |= selected_bank_mask;
-//         DownBankMask &= 0xf;
-//     }
-//     else
-//     {
-//         DownBankMask &= ~selected_bank_mask;
-//         DownBankMask &= 0xf;
-//     }
-
-//     LOG_DEBUG("MPCSwitchBankMode(bank_button=%02x, key_down=%d) => down_duration=%lld, is_click=%d, is_double_click=%d, shift=%d, current bank mask=%02x, permanent=%02x, DownMask=%02x\n",
-//                 bank_button, key_down, down_duration, is_click, is_double_click, shiftHoldMode, current_bank_layer_mask, PermanentMode, DownBankMask);
-//     LOG_DEBUG("               ...(bank_button=%02x, key_down=%d)\n", bank_button, key_down);
-//     LOG_DEBUG("               ...DownBankMask = %02x\n", (DownBankMask & ~PAD_BANK_A) << 4);
-
-//     // Hold modes, "high level" first, low level last
-//     if (is_click && (PermanentMode & selected_bank_mask))
-//     {
-//         // If PERMANENT BANK is the same as the button that's pressed,
-//         // then we switch layers (permanently)
-//         // NOTA: actually this doesn't make sense as A/B/C/D banks have no relation with
-//         // their EFGH counterparts
-//         MPCSwitchMatrix(selected_bank_mask & ~permanent_mode_mask, PAD_BANK_PERMANENTLY);
-//     }
-//     else if (is_click)
-//     {
-//         // We leave the 'overlay' mode, so we must switch to the permanent mode
-//         MPCSwitchMatrix(selected_bank_mask & permanent_mode_mask, PAD_BANK_PERMANENTLY);
-//     }
-//     else if (key_down)
-//     {
-//         // If SHIFT button is down at the same time, consider the change as permanent and immediate
-//         // Otherwise we assume it's temporary
-//         if (shiftHoldMode)
-//             MPCSwitchMatrix(selected_bank_mask & ~current_bank_layer_mask, PAD_BANK_PERMANENTLY);
-//         // Press/hold => we switch to the OTHER layer momentary (except for bank A)
-//         // if (bank_button == PAD_BANK_A && current_bank_layer_mask == PAD_BANK_EFGH)
-//         //     MPCSwitchMatrix(RestBanksMask & PAD_BANK_ABCD, PAD_BANK_MOMENTARY);
-//         else
-//             MPCSwitchMatrix(selected_bank_mask & ~current_bank_layer_mask, PAD_BANK_MOMENTARY);
-//     }
-//     // Release => we switch back to the saved layer (where we came from)
-//     else
-//     {
-//         // Unless it's a click, return to whatever was before the button was pressed (?)
-//         MPCSwitchMatrix(PAD_BANK_RESTORE, PAD_BANK_PERMANENTLY);
-//     }
-// }
-
-// void SetForceMatrixButton(uint8_t force_pad_note_number, bool on)
-// {
-//     // Set default colors for each button type
-//     // XXX This should be initialized at startup time
-//     ForceMPCPadColor_t color_on;
-//     ForceMPCPadColor_t color_off;
-//     switch (force_pad_note_number)
-//     {
-//     // Blacked-out pads
-//     case 0x00:
-//         color_on.r = 0x3F;
-//         color_on.g = 0x3F;
-//         color_on.b = 0x3F;
-//         color_off.r = 0x00;
-//         color_off.g = 0x00;
-//         color_off.b = 0x00;
-//         break;
-
-//     // Pads that are vivid orange
-//     case FORCE_BT_ASSIGN_A:
-//     case FORCE_BT_MUTE:
-//     case FORCE_BT_MASTER:
-//         color_on.r = 0x7F;
-//         color_on.g = 0x7F;
-//         color_on.b = 0x00;
-//         color_off.r = 0x3F;
-//         color_off.g = 0x3F;
-//         color_off.b = 0x00;
-//         break;
-
-//     // Pads that are vivid red
-//     case FORCE_BT_REC_ARM:
-//     case FORCE_BT_ASSIGN_B:
-//     case FORCE_BT_STOP_ALL:
-//         color_on.r = 0x7F;
-//         color_on.g = 0x00;
-//         color_on.b = 0x00;
-//         color_off.r = 0x3F;
-//         color_off.g = 0x00;
-//         color_off.b = 0x00;
-//         break;
-
-//     // Blue pads (yeah there are some of them)
-//     case FORCE_BT_SOLO:
-//         color_on.r = 0x00;
-//         color_on.g = 0x00;
-//         color_on.b = 0x7F;
-//         color_off.r = 0x00;
-//         color_off.g = 0x00;
-//         color_off.b = 0x3F;
-//         break;
-
-//     // Pads that are vivid green
-//     case FORCE_BT_CLIP_STOP:
-//     case FORCE_BT_LAUNCH_1:
-//     case FORCE_BT_LAUNCH_2:
-//     case FORCE_BT_LAUNCH_3:
-//     case FORCE_BT_LAUNCH_4:
-//     case FORCE_BT_LAUNCH_5:
-//     case FORCE_BT_LAUNCH_6:
-//     case FORCE_BT_LAUNCH_7:
-//     case FORCE_BT_LAUNCH_8:
-//         color_on.r = 0x00;
-//         color_on.g = 0x7F;
-//         color_on.b = 0x00;
-//         color_off.r = 0x00;
-//         color_off.g = 0x3F;
-//         color_off.b = 0x00;
-//         break;
-
-//     // Default color is white/gray
-//     default:
-//         color_on.r = 0x7F;
-//         color_on.g = 0x7F;
-//         color_on.b = 0x7F;
-//         color_off.r = 0x3F;
-//         color_off.g = 0x3F;
-//         color_off.b = 0x3F;
-//         break;
-//     }
-
-//     // XXX SUBOPTIMAL we look into the whole arrays for the note
-//     // We don't bother looking into A_A matrices because it's not used for buttons
-//     // We look into each matrix becaue one button could be present several times!
-//     for (u_int8_t i = 0; i < 16; i++)
-//     {
-//         if (MPCPadToForceF[i] == force_pad_note_number)
-//         {
-//             // LOG_DEBUG("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-//             // LOG_DEBUG("   -> found pad %02x in matrix B\n", i);
-//             if (on)
-//             {
-//                 MPCPadValuesF[i].r = color_on.r;
-//                 MPCPadValuesF[i].g = color_on.g;
-//                 MPCPadValuesF[i].b = color_on.b;
-//             }
-//             else
-//             {
-//                 MPCPadValuesF[i].r = color_off.r;
-//                 MPCPadValuesF[i].g = color_off.g;
-//                 MPCPadValuesF[i].b = color_off.b;
-//             }
-//             if (MPCPadMode == PAD_BANK_F)
-//                 DrawMatrixPadFromCache(PAD_BANK_F, i);
-//         }
-//         if (MPCPadToForceG[i] == force_pad_note_number)
-//         {
-//             // LOG_DEBUG("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-//             // LOG_DEBUG("   -> found pad %02x in matrix C\n", i);
-//             if (on)
-//             {
-//                 MPCPadValuesG[i].r = color_on.r;
-//                 MPCPadValuesG[i].g = color_on.g;
-//                 MPCPadValuesG[i].b = color_on.b;
-//             }
-//             else
-//             {
-//                 MPCPadValuesG[i].r = color_off.r;
-//                 MPCPadValuesG[i].g = color_off.g;
-//                 MPCPadValuesG[i].b = color_off.b;
-//             }
-//             if (MPCPadMode == PAD_BANK_G)
-//                 DrawMatrixPadFromCache(PAD_BANK_G, i);
-//         }
-//         if (MPCPadToForceH[i] == force_pad_note_number)
-//         {
-//             // LOG_DEBUG("SetForceMatrixButton: %02x to value %d\n", force_pad_note_number, on);
-//             // LOG_DEBUG("   -> found pad %02x in matrix D\n", i);
-//             if (on)
-//             {
-//                 MPCPadValuesH[i].r = color_on.r;
-//                 MPCPadValuesH[i].g = color_on.g;
-//                 MPCPadValuesH[i].b = color_on.b;
-//             }
-//             else
-//             {
-//                 MPCPadValuesH[i].r = color_off.r;
-//                 MPCPadValuesH[i].g = color_off.g;
-//                 MPCPadValuesH[i].b = color_off.b;
-//             }
-//             if (MPCPadMode == PAD_BANK_H)
-//                 DrawMatrixPadFromCache(PAD_BANK_H, i);
-//         }
-//     }
-
-//     return;
-// }
-
-///////////////////////////////////////////////////////////////////////////////
 // Set pad colors
-///////////////////////////////////////////////////////////////////////////////
 // 2 implementations : call with a 32 bits color int value or with r,g,b values
 // Pad number starts from top left (0), 8 pads per line
-void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b)
+inline void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b)
 {
 
     uint8_t sysexBuff[128];
@@ -1182,7 +534,7 @@ void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const
     orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
 }
 
-void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const PadColor_t rgbColorValue)
+inline void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const PadColor_t rgbColorValue)
 {
     // Colors R G B max value is 7f in SYSEX. So the bit 8 is always set to 0.
     uint8_t r = (rgbColorValue >> 16) & 0x7F;
@@ -1234,8 +586,17 @@ uint8_t getMPCPadNumber(uint8_t note_number)
     }
 }
 
+
 // This is the reverse of getMPCPadNumber
-uint8_t getMPCPadNoteNumber(uint8_t pad_number)
+uint8_t getForcePadNoteNumber(uint8_t pad_number, bool extra_bit)
+{
+    return pad_number + FORCEPADS_TABLE_IDX_OFFSET + (extra_bit ? 0x80 : 0);
+}
+
+
+
+// This is the reverse of getMPCPadNumber
+inline uint8_t getMPCPadNoteNumber(uint8_t pad_number)
 {
     switch (pad_number)
     {
@@ -1277,25 +638,19 @@ uint8_t getMPCPadNoteNumber(uint8_t pad_number)
     }
 }
 
-// This is the reverse of getMPCPadNumber
-uint8_t getForcePadNoteNumber(uint8_t pad_number)
-{
-    return pad_number + FORCEPADS_TABLE_IDX_OFFSET;
-}
 
-///////////////////////////////////////////////////////////////////////////////
 // MIDI READ - APP ON MPC READING AS FORCE
 // Here we read the MIDI messages from the MPC and we send them to the Force
 // That will be mostly button and pad presses!
 // It's pretty simple:
 // - We remap what's coming from the PADs according to the mode we're on
 // - We discard presses from "bank" buttons
-///////////////////////////////////////////////////////////////////////////////
 size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 {
-
+    SourceType_t source_type = source_unkown;
     uint8_t *midi_buffer = (uint8_t *)midiBuffer;
     size_t i = 0;
+    uint8_t note_number = 0xFF;
     MPCControlToForce_t *mpc_to_force_mapping_p;
     LOG_DEBUG("We have a %d/%d bytes buffer", size, maxSize);
 
@@ -1332,11 +687,15 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         // BUTTONS -----------------------------------------------------------------
         case 0x90:
             // Apply mapping, call the callback function
-            mpc_to_force_mapping_p = &MPCButtonToForce[midi_buffer[i + 1]];
+            source_type = source_button;
+            note_number = midi_buffer[i + 1];
+            mpc_to_force_mapping_p = &MPCButtonToForce[note_number];
             if (mpc_to_force_mapping_p->callback != NULL)
                 i += mpc_to_force_mapping_p->callback(
                     mpc_to_force_mapping_p,
                     NULL,
+                    source_type,
+                    note_number,
                     &midi_buffer[i],
                     size - i);
             break;
@@ -1345,18 +704,26 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         case 0x99:
         case 0x89:
         case 0xA9:
-            uint8_t pad_number = getMPCPadNumber(midi_buffer[i + 1]);
-            mpc_to_force_mapping_p = &MPCPadToForce[IAMForceStatus.pad_layout][pad_number];
+            note_number = getMPCPadNoteNumber(midi_buffer[i + 1]);
+            if (midi_buffer[i] == 0x99)
+                source_type = source_pad_note_on;
+            else if (midi_buffer[i] == 0x89)
+                source_type = source_pad_note_off;
+            else if (midi_buffer[i] == 0xA9)
+                source_type = source_pad_aftertouch;
+            mpc_to_force_mapping_p = &MPCPadToForce[IAMForceStatus.pad_layout][getMPCPadNumber(midi_buffer[i + 1])];
             if (mpc_to_force_mapping_p->callback != NULL)
                 i += mpc_to_force_mapping_p->callback(
                     mpc_to_force_mapping_p,
                     NULL,
+                    source_type,
+                    note_number,
                     &midi_buffer[i],
                     size - i);
 
         default:
             // Nothing to do here, we consume the byte and go to the next
-            // TODO: implement a "discard" function looking at status byte?
+            // TODO: implement a "discard" function looking at the status byte?
             i += 1;
             break;
 
@@ -1398,6 +765,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
     size_t i = 0;
     size_t callback_i = 0;
     ForceControlToMPC_t *force_to_mpc_mapping_p;
+    SourceType_t source_type = source_unkown;
 
     while (i < size)
     {
@@ -1416,13 +784,14 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             //                      v----- We start our midi buffer HERE, our pad # will be at i + sizeof(MPCSysexPadColorFn)
             // FN  F0 47 7F [3B] -> 65 00 04 [Pad #] [R] [G] [B] F7
             // Here, "pad #" is 0 for top-right pad, etc.
-            LOG_DEBUG("Entering pad write (Force->MPC) for pad %02x", midi_buffer[i + 3]);
             if (memcmp(&midi_buffer[i], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn)) == 0)
             {
                 // XXX TODO: triple-check against buffer overflow!
                 // It's a pad, so we set the last bit to 1
-                note_number = getForcePadNoteNumber(midi_buffer[sizeof(MPCSysexPadColorFn)]) + 0x80;
-                LOG_DEBUG("Force note number: %02x", note_number);
+                source_type = source_pad_sysex;
+                LOG_DEBUG("Entering pad write (Force->MPC) for pad %02x", midi_buffer[i + 3]);
+                note_number = getForcePadNoteNumber(midi_buffer[i + 3], true);
+                LOG_DEBUG("Force note number (with extra bit): %02x", note_number);
 
                 // XXX TODO: init project
                 // (that is, project was not init and note color != 0)
@@ -1440,6 +809,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                     callback_i = force_to_mpc_mapping_p->callback(
                         NULL,
                         force_to_mpc_mapping_p,
+                        source_type,
+                        note_number & 0x7F,
                         &midi_buffer[i],
                         size - i);
                     force_to_mpc_mapping_p = force_to_mpc_mapping_p->next_control;
@@ -1453,6 +824,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         else if (midi_buffer[i] == 0xB0)
         {
             note_number = midi_buffer[i + 1];
+            source_type = source_led;
             force_to_mpc_mapping_p = &ForceControlToMPC[note_number];
             while (force_to_mpc_mapping_p != NULL)
             {
@@ -1465,6 +837,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 callback_i = force_to_mpc_mapping_p->callback(
                     NULL,
                     force_to_mpc_mapping_p,
+                    source_type,
+                    note_number,
                     &midi_buffer[i],
                     size - i);
                 force_to_mpc_mapping_p = force_to_mpc_mapping_p->next_control;
@@ -1476,3 +850,4 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             i++;
     }
 }
+
