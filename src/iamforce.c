@@ -39,8 +39,9 @@ IAMForceStatus_t IAMForceStatus = {
 IAMForceStatus_t IAMForceRestStatus;
 
 // Default length of messages
-uint_fast8_t SOURCE_MESSAGE_LENGTH[7] = {
-    3, // source_button
+uint_fast8_t SOURCE_MESSAGE_LENGTH[8] = {
+    3, // source_button on
+    3, // source_button off
     3, // source_led
     3, // source_pad_note_on
     3, // source_pad_note_off
@@ -318,12 +319,11 @@ static ForceControlToMPC_t ForceControlToMPC[CONTROL_TABLE_SIZE] = {
 static uint8_t ForceControlToMPCExtraNext = 0x80;                             // Next available index
 static uint8_t ForceControlToMPCExtraMax = 0x80 + FORCEPADS_TABLE_IDX_OFFSET; // Max index
 
-
 // These are the matrices where actual RGB values are stored
 // They are initialized at start time and populated in the Write function
 // And they are given with their index
 // Use IAMFORCE_LAYOUT_PAD_* variables to address a specific array
-static PadColor_t MPCPadValues[IAMFORCE_LAYOUT_N][16];
+PadColor_t MPCPadValues[IAMFORCE_LAYOUT_N][16];
 
 void invertMPCToForceMapping()
 {
@@ -419,11 +419,48 @@ void invertMPCToForceMapping()
  *                                                                        *
  **************************************************************************/
 
-// If instant_redraw is True, we will redraw the pad immediately (if we are in the same bank)
-// This function returns True if the pad has to be redrawn, False otherwise
-bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_redraw)
+
+inline void SetLayout(uint8_t pad_layout)
 {
-    // XXX TODO, including refresh of the pad color if necessary!
+    // Check if we are already in the right layout
+    if (IAMForceStatus.pad_layout == pad_layout)
+        return;
+
+    // Set the new layout
+    IAMForceStatus.pad_layout = pad_layout;
+
+    // Redraw the pads
+    for (uint8_t i = 0; i < 16; i++)
+    {
+        SetPadColorFromColorInt(i, MPCPadValues[pad_layout][i]);
+    }
+
+    return;
+}
+
+
+// If instant_set is True, we will redraw the pad immediately (if we are in the same bank)
+// Return true if we still have to redraw the pad, false otherwise
+inline bool SetLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb, bool instant_set)
+{
+    // Update the matrix
+    MPCPadValues[pad_layout][note_number] = rgb;
+
+    // Do we *have* to redraw it?
+    if (IAMForceStatus.pad_layout == pad_layout)
+    {
+        if (instant_set)
+        {
+            // We are in the same bank, redraw the pad
+            SetPadColorFromColorInt(getMPCPadNumber(note_number), rgb);
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    // We don't have to redraw it
     return false;
 }
 
@@ -476,11 +513,10 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
     memset(buf, 0x00, size);
 }
 
-
 // Set pad colors
 // 2 implementations : call with a 32 bits color int value or with r,g,b values
 // Pad number starts from top left (0), 8 pads per line
-inline void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b)
+inline void SetPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t g, const uint8_t b)
 {
 
     uint8_t sysexBuff[128];
@@ -488,17 +524,14 @@ inline void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r
     int p = 0;
 
     // Log event
-    LOG_DEBUG("               Set pad color: L=%d C=%d r g b %02X %02X %02X", padL, padC, r, g, b);
+    LOG_DEBUG("               Set pad color: %02x r g b %02X %02X %02X", pad_number, r, g, b);
 
     // Double-check input data
-    if (padL > 3 || padC > 3)
+    if (pad_number > 16)
     {
-        LOG_ERROR("MPC Pad Line refresh : wrong pad number %d %d", padL, padC);
+        LOG_ERROR("MPC Pad Line refresh : wrong pad number %d", pad_number);
         return;
     }
-
-    // Set pad number correctly
-    uint8_t padNumber = (3 - padL) * 4 + padC;
 
     // F0 47 7F [3B] 65 00 04 [Pad #] [R] [G] [B] F7
     memcpy(sysexBuff, AkaiSysex, sizeof(AkaiSysex));
@@ -510,7 +543,7 @@ inline void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r
     // Add the pad color fn and pad number and color
     memcpy(&sysexBuff[p], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn));
     p += sizeof(MPCSysexPadColorFn);
-    sysexBuff[p++] = padNumber;
+    sysexBuff[p++] = pad_number;
 
     // Issue the color message
     sysexBuff[p++] = r;
@@ -534,13 +567,13 @@ inline void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r
     orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
 }
 
-inline void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const PadColor_t rgbColorValue)
+inline void SetPadColorFromColorInt(const uint8_t pad_number, const PadColor_t rgbColorValue)
 {
     // Colors R G B max value is 7f in SYSEX. So the bit 8 is always set to 0.
     uint8_t r = (rgbColorValue >> 16) & 0x7F;
     uint8_t g = (rgbColorValue >> 8) & 0x7F;
     uint8_t b = rgbColorValue & 0x7F;
-    SetPadColor(padL, padC, r, g, b);
+    SetPadColor(pad_number, r, g, b);
 }
 
 // Given a MIDI note number, we convert it to a PAD number,
@@ -586,14 +619,11 @@ uint8_t getMPCPadNumber(uint8_t note_number)
     }
 }
 
-
 // This is the reverse of getMPCPadNumber
 uint8_t getForcePadNoteNumber(uint8_t pad_number, bool extra_bit)
 {
     return pad_number + FORCEPADS_TABLE_IDX_OFFSET + (extra_bit ? 0x80 : 0);
 }
-
-
 
 // This is the reverse of getMPCPadNumber
 inline uint8_t getMPCPadNoteNumber(uint8_t pad_number)
@@ -637,7 +667,6 @@ inline uint8_t getMPCPadNoteNumber(uint8_t pad_number)
         return 0xFF;
     }
 }
-
 
 // MIDI READ - APP ON MPC READING AS FORCE
 // Here we read the MIDI messages from the MPC and we send them to the Force
@@ -687,7 +716,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         // BUTTONS -----------------------------------------------------------------
         case 0x90:
             // Apply mapping, call the callback function
-            source_type = source_button;
+            source_type = midi_buffer[i + 2] == 0x7f ? source_button_on : source_button_off;
             note_number = midi_buffer[i + 1];
             mpc_to_force_mapping_p = &MPCButtonToForce[note_number];
             if (mpc_to_force_mapping_p->callback != NULL)
@@ -850,4 +879,3 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             i++;
     }
 }
-

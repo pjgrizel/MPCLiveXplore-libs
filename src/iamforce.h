@@ -18,14 +18,15 @@ void LoadMapping();
 size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size);
 void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
 
-extern void SetPadColorFromColorInt(const uint8_t padL, const u_int8_t padC, const uint32_t rgbColorValue);
-extern void SetPadColor(const uint8_t padL, const u_int8_t padC, const uint8_t r, const uint8_t g, const uint8_t b);
+extern void SetPadColorFromColorInt(const uint8_t pad_number, const PadColor_t rgbColorValue);
+extern void SetPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t g, const uint8_t b);
 extern void displayBatteryStatus();
 extern void MPCSwitchMatrix(uint8_t new_mode, bool permanently);
 uint8_t getMPCPadNoteNumber(uint8_t pad_number);
 uint8_t getMPCPadNumber(uint8_t note_number);
 void FakeMidiMessage(uint8_t buf[], size_t size);
-bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_redraw);
+extern void SetLayout(uint8_t pad_layout);
+extern bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
 
 // Press mode delay in ms. If we keep pressing for more than this time,
 // consider this mode as a temporary toggle
@@ -86,9 +87,9 @@ bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool inst
 
 // Create a source type enum that is an int8_t integer
 // and create an new SourceType_t alias type
-enum
-{
-    source_button,       // This is button press
+enum {
+    source_button_on,       // This is button press
+    source_button_off,       // This is button release
     source_led,          // This is button *LED*
     source_pad_note_on,  // Channel will be different
     source_pad_note_off, // Channel will be different
@@ -99,7 +100,7 @@ enum
 typedef int8_t SourceType_t;
 
 // Default length of messages
-extern uint_fast8_t SOURCE_MESSAGE_LENGTH[7];
+extern uint_fast8_t SOURCE_MESSAGE_LENGTH[];
 
 // Forward declaration of the MPCControlToForce_t structure
 typedef struct MPCControlToForce_s MPCControlToForce_t;

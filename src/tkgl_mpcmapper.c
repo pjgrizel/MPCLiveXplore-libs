@@ -577,22 +577,22 @@ static void tkgl_init()
         [x] [ ] [y] [y]
     */
     tklog_info("Setting pads colors...\n");
-    SetPadColorFromColorInt(0, 0, COLOR_CYAN);
-    SetPadColorFromColorInt(0, 1, COLOR_CYAN);
-    SetPadColorFromColorInt(0, 2, COLOR_BLACK);
-    SetPadColorFromColorInt(0, 3, COLOR_PINK);
-    SetPadColorFromColorInt(1, 0, COLOR_CYAN);
-    SetPadColorFromColorInt(1, 1, COLOR_CYAN);
-    SetPadColorFromColorInt(1, 2, COLOR_BLACK);
-    SetPadColorFromColorInt(1, 3, COLOR_PINK);
-    SetPadColorFromColorInt(2, 0, COLOR_CYAN);
-    SetPadColorFromColorInt(2, 1, COLOR_BLACK);
-    SetPadColorFromColorInt(2, 2, COLOR_PINK);
-    SetPadColorFromColorInt(2, 3, COLOR_PINK);
-    SetPadColorFromColorInt(3, 0, COLOR_CYAN);
-    SetPadColorFromColorInt(3, 1, COLOR_BLACK);
-    SetPadColorFromColorInt(3, 2, COLOR_PINK);
-    SetPadColorFromColorInt(3, 3, COLOR_PINK);
+    SetPadColorFromColorInt(0x0, COLOR_CYAN);
+    SetPadColorFromColorInt(0x1, COLOR_CYAN);
+    SetPadColorFromColorInt(0x2, COLOR_BLACK);
+    SetPadColorFromColorInt(0x3, COLOR_PINK);
+    SetPadColorFromColorInt(0x4, COLOR_CYAN);
+    SetPadColorFromColorInt(0x5, COLOR_CYAN);
+    SetPadColorFromColorInt(0x6, COLOR_BLACK);
+    SetPadColorFromColorInt(0x7, COLOR_PINK);
+    SetPadColorFromColorInt(0x8, COLOR_CYAN);
+    SetPadColorFromColorInt(0x9, COLOR_BLACK);
+    SetPadColorFromColorInt(0xa, COLOR_PINK);
+    SetPadColorFromColorInt(0xb, COLOR_PINK);
+    SetPadColorFromColorInt(0xc, COLOR_CYAN);
+    SetPadColorFromColorInt(0xd, COLOR_BLACK);
+    SetPadColorFromColorInt(0xe, COLOR_PINK);
+    SetPadColorFromColorInt(0xf, COLOR_PINK);
     tklog_info("DONE...\n");
 
     fflush(stdout);
@@ -632,6 +632,10 @@ static void RawMidiDump(snd_rawmidi_t *rawmidi, char io, char rw, const uint8_t 
 {
 
     const char *name = snd_rawmidi_name(rawmidi);
+
+    // Skip B0 35 messages
+    if (sz > 2 && data[0] == 0xb0 && data[1] == 0x35)
+        return;
 
     tklog_trace("%s dump snd_rawmidi_%s from controller %s\n", io == 'i' ? "Entry" : "Post", rw == 'r' ? "read" : "write", name);
     ShowBufferHexDump(data, sz, 16);
