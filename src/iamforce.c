@@ -598,7 +598,7 @@ inline void SetPadColorFromColorInt(const uint8_t pad_number, const PadColor_t r
 // from 0 (top left) to 15 (bottom right)
 uint8_t getMPCPadNumber(uint8_t note_number)
 {
-    switch (note_number & 0xF7)
+    switch (note_number & 0x7F)
     {
     case LIVEII_PAD_TL0:
         return 0;
@@ -633,6 +633,7 @@ uint8_t getMPCPadNumber(uint8_t note_number)
     case LIVEII_PAD_TL15:
         return 15;
     default:
+        LOG_ERROR("Note number %02x can't be converted to pad number", note_number);
         return 0;
     }
 }
