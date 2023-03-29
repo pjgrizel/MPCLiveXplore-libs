@@ -177,27 +177,29 @@ void cb_default_write(ForceControlToMPC_t *mpc_target, SourceType_t source_type,
                 mpc_target->color,
                 true);
         }
+        break;
 
     case source_pad_sysex:
         // FORCE PAD ==========> MPC PAD (easy)
         // We are in PAD COLOR update mode so we won't draw it,
         // but we will store it in the pad color buffer.
-        if (mpc_target->note_number >= 0x80)
+        if (mpc_target->bank != IAMFORCE_LAYOUT_NONE)
         {
-            if (SetLayoutPad(
-                    mpc_target->bank,
-                    mpc_target->note_number - 0x80,
-                    mpc_target->color,
-                    false))
+            int_fast8_t pad_number = SetLayoutPad(
+                mpc_target->bank,
+                mpc_target->note_number & 0x7f,
+                mpc_target->color,
+                false);
+            if (pad_number != 0xff)
             {
-                midi_buffer[3] = mpc_target->note_number - 0x80;
-                // XXX TODO: change color?
+                midi_buffer[3] = pad_number;
+                // XXX TODO: change / transpose color?
             }
         }
         // FORCE PAD =======> MPC BUTTON
         else
         {
-            LOG_ERROR("PAD SYSEX message from Force to MPC button => ignored");
+            LOG_ERROR("PAD SYSEX message from Force pad %02x to MPC button %02x => ignored", note_number, mpc_target->note_number);
         }
         break;
 
@@ -213,10 +215,12 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
     // We skip unconfigured buttons
     if (force_target != NULL && force_target->note_number != 0xff)
     {
+        LOG_DEBUG("...attempt to map MPC %02x (source type=%d) ===> to Force %02x", note_number, source_type, force_target->note_number);
         cb_default_read(force_target, source_type, note_number, midi_buffer, buffer_size);
     }
     else if (mpc_target != NULL && mpc_target->note_number != 0xff)
     {
+        LOG_DEBUG("...attempt to map Force %02x (source type=%d) ===> to MPC %02x.%02x", note_number, source_type, mpc_target->bank, mpc_target->note_number);
         cb_default_write(mpc_target, source_type, note_number, midi_buffer, buffer_size);
     }
     else

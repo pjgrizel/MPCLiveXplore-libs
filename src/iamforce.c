@@ -25,7 +25,7 @@
 // Global status / Rest status
 // Initial status
 IAMForceStatus_t IAMForceStatus = {
-    .pad_layout = IAMFORCE_LAYOUT_NONE,
+    .pad_layout = IAMFORCE_LAYOUT_PAD_BANK_A,
     .force_mode = MPC_FORCE_MODE_NONE,
     .launch_mode_layout = IAMFORCE_LAYOUT_PAD_BANK_A,
     .stepseq_mode_layout = IAMFORCE_LAYOUT_PAD_BANK_A,
@@ -404,7 +404,7 @@ void invertMPCToForceMapping()
         }
 
         // Save mapping
-        LOG_DEBUG("   => Mapping Force note %02x to callback %p", mapping_p->note_number, mapping_p->callback);
+        LOG_DEBUG("   => Mapping Force note %02X to callback %p", mapping_p->note_number, mapping_p->callback);
         // XXX TODO: don't override default (already set) values
         reverse_mapping_p->note_number = mpc_note_number;
         reverse_mapping_p->bank = IAMFORCE_LAYOUT_NONE;
@@ -440,11 +440,14 @@ inline void SetLayout(uint8_t pad_layout)
 
 
 // If instant_set is True, we will redraw the pad immediately (if we are in the same bank)
-// Return true if we still have to redraw the pad, false otherwise
-inline bool SetLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb, bool instant_set)
+// Return the number of the pad (useable in a SYSEX message) or 0xff
+inline int_fast8_t SetLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb, bool instant_set)
 {
+    uint8_t pad_number = getMPCPadNumber(note_number);
+
     // Update the matrix
-    MPCPadValues[pad_layout][note_number] = rgb;
+    LOG_DEBUG("      update matrix for pad %02X.%02X to %08x (current layout=%02X)", pad_layout, pad_number, rgb, IAMForceStatus.pad_layout);
+    MPCPadValues[pad_layout][pad_number] = rgb;
 
     // Do we *have* to redraw it?
     if (IAMForceStatus.pad_layout == pad_layout)
@@ -452,16 +455,18 @@ inline bool SetLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb
         if (instant_set)
         {
             // We are in the same bank, redraw the pad
-            SetPadColorFromColorInt(getMPCPadNumber(note_number), rgb);
+            SetPadColorFromColorInt(pad_number, rgb);
+            return 0xff;
         }
         else
         {
-            return true;
+            LOG_DEBUG("     ...we should draw it but we are not allowed to do so! Return %02X", pad_number);
+            return pad_number;
         }
     }
 
     // We don't have to redraw it
-    return false;
+    return 0xff;
 }
 
 /**************************************************************************
@@ -484,7 +489,7 @@ void LoadMapping()
     // Dump mapping (ForceControlToMPC)
     for (int i = 0; i < CONTROL_TABLE_SIZE; i++)
     {
-        LOG_DEBUG("ForceControlToMPC[%02x] = %02x.%02x // %p %p",
+        LOG_DEBUG("ForceControlToMPC[%02X] = %02X.%02X // %p %p",
                   i,
                   ForceControlToMPC[i].bank,
                   ForceControlToMPC[i].note_number,
@@ -520,11 +525,12 @@ inline void SetPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t
 {
 
     uint8_t sysexBuff[128];
+    int_fast8_t mpc_pad_number;
     char sysexBuffDebug[128];
     int p = 0;
 
     // Log event
-    LOG_DEBUG("               Set pad color: %02x r g b %02X %02X %02X", pad_number, r, g, b);
+    LOG_DEBUG("               Set pad color: %02X r g b %02X %02X %02X", pad_number, r, g, b);
 
     // Double-check input data
     if (pad_number > 16)
@@ -543,7 +549,19 @@ inline void SetPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t
     // Add the pad color fn and pad number and color
     memcpy(&sysexBuff[p], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn));
     p += sizeof(MPCSysexPadColorFn);
-    sysexBuff[p++] = pad_number;
+
+    // Number starts from lower left.
+    // However we expect that they start from UPPER left, so we convert it.
+    // XXX I should find a less CPU-intensive way to do this (or should I?)
+    if (pad_number < 4)
+        mpc_pad_number = pad_number + 12;
+    else if (pad_number < 8)
+        mpc_pad_number = pad_number + 4;
+    else if (pad_number < 12)
+        mpc_pad_number = pad_number - 4;
+    else
+        mpc_pad_number = pad_number - 12;
+    sysexBuff[p++] = mpc_pad_number;
 
     // Issue the color message
     sysexBuff[p++] = r;
@@ -580,7 +598,7 @@ inline void SetPadColorFromColorInt(const uint8_t pad_number, const PadColor_t r
 // from 0 (top left) to 15 (bottom right)
 uint8_t getMPCPadNumber(uint8_t note_number)
 {
-    switch (note_number)
+    switch (note_number & 0xF7)
     {
     case LIVEII_PAD_TL0:
         return 0;
@@ -620,9 +638,9 @@ uint8_t getMPCPadNumber(uint8_t note_number)
 }
 
 // This is the reverse of getMPCPadNumber
-uint8_t getForcePadNoteNumber(uint8_t pad_number, bool extra_bit)
+uint8_t getForcePadNoteNumber(uint8_t pad_number, bool add_extra_bit)
 {
-    return pad_number + FORCEPADS_TABLE_IDX_OFFSET + (extra_bit ? 0x80 : 0);
+    return pad_number + FORCEPADS_TABLE_IDX_OFFSET + (add_extra_bit ? 0x80 : 0);
 }
 
 // This is the reverse of getMPCPadNumber
@@ -663,7 +681,7 @@ inline uint8_t getMPCPadNoteNumber(uint8_t pad_number)
     case 15:
         return LIVEII_PAD_TL15;
     default:
-        LOG_ERROR("Invalid pad number: %02x", pad_number);
+        LOG_ERROR("Invalid pad number: %02X", pad_number);
         return 0xFF;
     }
 }
@@ -767,7 +785,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             //     if (shiftHoldMode && DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount < 16)
             //         midi_buffer[i + 1] += DeviceInfoBloc[MPCOriginalId].qlinkKnobsCount;
 
-            //     // LOG_DEBUG("Qlink 0x%02x touch\n",midi_buffer[i+1] );
+            //     // LOG_DEBUG("Qlink 0x%02X touch\n",midi_buffer[i+1] );
             //     i += 3;
             //     continue; // next msg
             // }
@@ -818,9 +836,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 // XXX TODO: triple-check against buffer overflow!
                 // It's a pad, so we set the last bit to 1
                 source_type = source_pad_sysex;
-                LOG_DEBUG("Entering pad write (Force->MPC) for pad %02x", midi_buffer[i + 3]);
+                LOG_DEBUG("Entering pad write (Force->MPC) for pad %02X", midi_buffer[i + 3]);
                 note_number = getForcePadNoteNumber(midi_buffer[i + 3], true);
-                LOG_DEBUG("Force note number (with extra bit): %02x", note_number);
 
                 // XXX TODO: init project
                 // (that is, project was not init and note color != 0)
@@ -831,10 +848,11 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 {
                     if (force_to_mpc_mapping_p->callback == NULL)
                     {
-                        LOG_DEBUG("NULL callback for Force note %02x", note_number);
+                        LOG_DEBUG("NULL callback for Force note %02X", note_number);
                         callback_i = 7;
                         break;
                     }
+                    LOG_DEBUG("Calling callback for PAD %02X change (note number=%02X)", midi_buffer[i + 3], note_number);
                     callback_i = force_to_mpc_mapping_p->callback(
                         NULL,
                         force_to_mpc_mapping_p,
@@ -845,6 +863,9 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                     force_to_mpc_mapping_p = force_to_mpc_mapping_p->next_control;
                 }
                 i += callback_i; // Only advance once even if we called several callbacks
+
+                // Deliberately exit the program here
+                // exit(-1);
             }
         }
 
@@ -859,7 +880,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             {
                 if (force_to_mpc_mapping_p->callback == NULL)
                 {
-                    LOG_DEBUG("NULL callback for Force note %02x", note_number);
+                    LOG_DEBUG("NULL callback for Force note %02X", note_number);
                     callback_i = 3;
                     break;
                 }

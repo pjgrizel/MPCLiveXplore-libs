@@ -26,7 +26,7 @@ uint8_t getMPCPadNoteNumber(uint8_t pad_number);
 uint8_t getMPCPadNumber(uint8_t note_number);
 void FakeMidiMessage(uint8_t buf[], size_t size);
 extern void SetLayout(uint8_t pad_layout);
-extern bool SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
+extern int_fast8_t SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
 
 // Press mode delay in ms. If we keep pressing for more than this time,
 // consider this mode as a temporary toggle
