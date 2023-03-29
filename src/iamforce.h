@@ -53,6 +53,7 @@ extern int_fast8_t SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t 
 #define BATTERY_DISCHARGING 0x02
 #define BATTERY_NOT_CHARGING 0x03
 #define BATTERY_FULL 0x04
+#define BATTERY_UNKNOWN 0xFF
 
 // Ok, now we are talking about the reverse mode: how a Force control
 // maps to an MPC control. It's not a bijection!

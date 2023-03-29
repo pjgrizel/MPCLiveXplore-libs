@@ -699,7 +699,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
     size_t i = 0;
     uint8_t note_number = 0xFF;
     MPCControlToForce_t *mpc_to_force_mapping_p;
-    LOG_DEBUG("We have a %d/%d bytes buffer", size, maxSize);
+    // LOG_DEBUG("We have a %d/%d bytes buffer", size, maxSize);
 
     while (i < size)
     {

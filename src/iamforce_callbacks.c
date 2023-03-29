@@ -185,16 +185,13 @@ void cb_default_write(ForceControlToMPC_t *mpc_target, SourceType_t source_type,
         // but we will store it in the pad color buffer.
         if (mpc_target->bank != IAMFORCE_LAYOUT_NONE)
         {
+            PadColor_t pad_color = midi_buffer[4] << 16 | midi_buffer[5] << 8 | midi_buffer[6];
             int_fast8_t pad_number = SetLayoutPad(
                 mpc_target->bank,
                 mpc_target->note_number & 0x7f,
-                mpc_target->color,
+                pad_color,
                 false);
-            if (pad_number != 0xff)
-            {
-                midi_buffer[3] = pad_number;
-                // XXX TODO: change / transpose color?
-            }
+            midi_buffer[3] = pad_number;
         }
         // FORCE PAD =======> MPC BUTTON
         else
@@ -215,12 +212,12 @@ size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_ta
     // We skip unconfigured buttons
     if (force_target != NULL && force_target->note_number != 0xff)
     {
-        LOG_DEBUG("...attempt to map MPC %02x (source type=%d) ===> to Force %02x", note_number, source_type, force_target->note_number);
+        LOG_DEBUG("...map MPC %02x (source type=%d) ===> to Force %02x", note_number, source_type, force_target->note_number);
         cb_default_read(force_target, source_type, note_number, midi_buffer, buffer_size);
     }
     else if (mpc_target != NULL && mpc_target->note_number != 0xff)
     {
-        LOG_DEBUG("...attempt to map Force %02x (source type=%d) ===> to MPC %02x.%02x", note_number, source_type, mpc_target->bank, mpc_target->note_number);
+        LOG_DEBUG("...map Force %02x (source type=%d) ===> to MPC %02x.%02x", note_number, source_type, mpc_target->bank, mpc_target->note_number);
         cb_default_write(mpc_target, source_type, note_number, midi_buffer, buffer_size);
     }
     else
@@ -240,7 +237,7 @@ size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_
     uint8_t other_leds = 0x01;
     char buffer[16];
     char intBuffer[4];
-    uint8_t battery_status;
+    uint8_t battery_status = BATTERY_UNKNOWN;
     ssize_t bytesRead;
     uint8_t scale;
 
