@@ -281,6 +281,10 @@ static MPCControlToForce_t MPCButtonToForce[128] = {
     [LIVEII_BT_PLAY_START].note_number = FORCE_BT_PLAY,
 
     // Edition buttons. These are double-function buttons so we use a callbacks here
+    [LIVEII_BT_BANK_A].callback = cb_edit_button,
+    [LIVEII_BT_BANK_B].callback = cb_edit_button,
+    [LIVEII_BT_BANK_C].callback = cb_edit_button,
+    [LIVEII_BT_BANK_D].callback = cb_edit_button,
     [LIVEII_BT_NOTE_REPEAT].callback = cb_edit_button,
     [LIVEII_BT_FULL_LEVEL].callback = cb_edit_button,
     [LIVEII_BT_16_LEVEL].callback = cb_edit_button,
@@ -420,7 +424,7 @@ void invertMPCToForceMapping()
  **************************************************************************/
 
 
-inline void SetLayout(uint8_t pad_layout)
+inline void setLayout(uint8_t pad_layout)
 {
     // Check if we are already in the right layout
     if (IAMForceStatus.pad_layout == pad_layout)
@@ -432,16 +436,53 @@ inline void SetLayout(uint8_t pad_layout)
     // Redraw the pads
     for (uint8_t i = 0; i < 16; i++)
     {
-        SetPadColorFromColorInt(i, MPCPadValues[pad_layout][i]);
+        setPadColorFromColorInt(i, MPCPadValues[pad_layout][i]);
     }
 
+    // Show button state
+    // XXX TODO avoid changing all button colors everytime
+    switch(pad_layout)
+    {
+        case IAMFORCE_LAYOUT_PAD_BANK_A:
+            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_RED);
+            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_LIGHT_RED);
+            break;
+        case IAMFORCE_LAYOUT_PAD_BANK_B:
+            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_RED);
+            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_LIGHT_RED);
+            break;
+        case IAMFORCE_LAYOUT_PAD_BANK_C:
+            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_RED);
+            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_LIGHT_RED);
+            break;
+        case IAMFORCE_LAYOUT_PAD_BANK_D:
+            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_LIGHT_RED);
+            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_RED);
+            break;
+    }
+
+    return;
+}
+
+inline void setButtonColor(uint8_t button, uint8_t color)
+{
+    uint8_t button_light[] = {0xB0, button, color};
+    orig_snd_rawmidi_write(rawvirt_outpriv, button_light, sizeof(button_light));
     return;
 }
 
 
 // If instant_set is True, we will redraw the pad immediately (if we are in the same bank)
 // Return the number of the pad (useable in a SYSEX message) or 0xff
-inline int_fast8_t SetLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb, bool instant_set)
+inline int_fast8_t setLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb, bool instant_set)
 {
     uint8_t pad_number = getMPCPadNumber(note_number);
 
@@ -455,7 +496,7 @@ inline int_fast8_t SetLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColo
         if (instant_set)
         {
             // We are in the same bank, redraw the pad
-            SetPadColorFromColorInt(pad_number, rgb);
+            setPadColorFromColorInt(pad_number, rgb);
             return 0xff;
         }
         else
@@ -521,7 +562,7 @@ void FakeMidiMessage(uint8_t buf[], size_t size)
 // Set pad colors
 // 2 implementations : call with a 32 bits color int value or with r,g,b values
 // Pad number starts from top left (0), 8 pads per line
-inline void SetPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t g, const uint8_t b)
+inline void setPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t g, const uint8_t b)
 {
 
     uint8_t sysexBuff[128];
@@ -585,13 +626,13 @@ inline void SetPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t
     orig_snd_rawmidi_write(rawvirt_outpriv, sysexBuff, p);
 }
 
-inline void SetPadColorFromColorInt(const uint8_t pad_number, const PadColor_t rgbColorValue)
+inline void setPadColorFromColorInt(const uint8_t pad_number, const PadColor_t rgbColorValue)
 {
     // Colors R G B max value is 7f in SYSEX. So the bit 8 is always set to 0.
     uint8_t r = (rgbColorValue >> 16) & 0x7F;
     uint8_t g = (rgbColorValue >> 8) & 0x7F;
     uint8_t b = rgbColorValue & 0x7F;
-    SetPadColor(pad_number, r, g, b);
+    setPadColor(pad_number, r, g, b);
 }
 
 // Given a MIDI note number, we convert it to a PAD number,
@@ -738,6 +779,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             source_type = midi_buffer[i + 2] == 0x7f ? source_button_on : source_button_off;
             note_number = midi_buffer[i + 1];
             mpc_to_force_mapping_p = &MPCButtonToForce[note_number];
+            LOG_DEBUG("Button %02x %02x => %p (CB=%p)", note_number, midi_buffer[i + 2], mpc_to_force_mapping_p, mpc_to_force_mapping_p->callback);
             if (mpc_to_force_mapping_p->callback != NULL)
                 i += mpc_to_force_mapping_p->callback(
                     mpc_to_force_mapping_p,
@@ -746,6 +788,8 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                     note_number,
                     &midi_buffer[i],
                     size - i);
+            else
+                i += SOURCE_MESSAGE_LENGTH[source_type];
             break;
 
         // PADS -------------------------------------------------------------------

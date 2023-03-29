@@ -18,15 +18,16 @@ void LoadMapping();
 size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size);
 void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
 
-extern void SetPadColorFromColorInt(const uint8_t pad_number, const PadColor_t rgbColorValue);
-extern void SetPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t g, const uint8_t b);
+extern void setPadColorFromColorInt(const uint8_t pad_number, const PadColor_t rgbColorValue);
+extern void setPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t g, const uint8_t b);
 extern void displayBatteryStatus();
 extern void MPCSwitchMatrix(uint8_t new_mode, bool permanently);
 uint8_t getMPCPadNoteNumber(uint8_t pad_number);
 uint8_t getMPCPadNumber(uint8_t note_number);
 void FakeMidiMessage(uint8_t buf[], size_t size);
-extern void SetLayout(uint8_t pad_layout);
-extern int_fast8_t SetLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
+extern void setLayout(uint8_t pad_layout);
+extern int_fast8_t setLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
+extern void setButtonColor(uint8_t button, uint8_t color);
 
 // Press mode delay in ms. If we keep pressing for more than this time,
 // consider this mode as a temporary toggle

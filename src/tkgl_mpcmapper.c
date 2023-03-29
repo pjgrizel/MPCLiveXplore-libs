@@ -577,22 +577,22 @@ static void tkgl_init()
         [x] [ ] [y] [y]
     */
     tklog_info("Setting pads colors...\n");
-    SetPadColorFromColorInt(0x0, COLOR_CYAN);
-    SetPadColorFromColorInt(0x1, COLOR_CYAN);
-    SetPadColorFromColorInt(0x2, COLOR_BLACK);
-    SetPadColorFromColorInt(0x3, COLOR_PINK);
-    SetPadColorFromColorInt(0x4, COLOR_CYAN);
-    SetPadColorFromColorInt(0x5, COLOR_CYAN);
-    SetPadColorFromColorInt(0x6, COLOR_BLACK);
-    SetPadColorFromColorInt(0x7, COLOR_PINK);
-    SetPadColorFromColorInt(0x8, COLOR_CYAN);
-    SetPadColorFromColorInt(0x9, COLOR_BLACK);
-    SetPadColorFromColorInt(0xa, COLOR_PINK);
-    SetPadColorFromColorInt(0xb, COLOR_PINK);
-    SetPadColorFromColorInt(0xc, COLOR_CYAN);
-    SetPadColorFromColorInt(0xd, COLOR_BLACK);
-    SetPadColorFromColorInt(0xe, COLOR_PINK);
-    SetPadColorFromColorInt(0xf, COLOR_PINK);
+    setPadColorFromColorInt(0x0, COLOR_CYAN);
+    setPadColorFromColorInt(0x1, COLOR_CYAN);
+    setPadColorFromColorInt(0x2, COLOR_BLACK);
+    setPadColorFromColorInt(0x3, COLOR_PINK);
+    setPadColorFromColorInt(0x4, COLOR_CYAN);
+    setPadColorFromColorInt(0x5, COLOR_CYAN);
+    setPadColorFromColorInt(0x6, COLOR_BLACK);
+    setPadColorFromColorInt(0x7, COLOR_PINK);
+    setPadColorFromColorInt(0x8, COLOR_CYAN);
+    setPadColorFromColorInt(0x9, COLOR_BLACK);
+    setPadColorFromColorInt(0xa, COLOR_PINK);
+    setPadColorFromColorInt(0xb, COLOR_PINK);
+    setPadColorFromColorInt(0xc, COLOR_CYAN);
+    setPadColorFromColorInt(0xd, COLOR_BLACK);
+    setPadColorFromColorInt(0xe, COLOR_PINK);
+    setPadColorFromColorInt(0xf, COLOR_PINK);
     tklog_info("DONE...\n");
 
     fflush(stdout);
