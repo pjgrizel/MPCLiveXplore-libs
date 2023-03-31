@@ -24,8 +24,9 @@ extern void displayBatteryStatus();
 extern void MPCSwitchMatrix(uint8_t new_mode, bool permanently);
 uint8_t getMPCPadNoteNumber(uint8_t pad_number);
 uint8_t getMPCPadNumber(uint8_t note_number);
-void FakeMidiMessage(uint8_t buf[], size_t size);
-extern void setLayout(uint8_t pad_layout);
+size_t FakeMidiMessage(uint8_t buf[], size_t size);
+extern void setLayout(uint8_t pad_layout, bool permanent);
+extern void initProject();      // Special utility to start project
 extern int_fast8_t setLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
 extern void setButtonColor(uint8_t button, uint8_t color);
 
@@ -97,6 +98,7 @@ enum {
     source_pad_note_off, // Channel will be different
     source_pad_aftertouch,   // Channel will be different
     source_pad_sysex,
+    source_cc_change,       // Controller change (used for xfader)
     source_unkown
 };
 typedef int8_t SourceType_t;
@@ -111,19 +113,23 @@ typedef struct ForceControlToMPC_s ForceControlToMPC_t;
 // Define the callback function signature
 // source_type is one of the source_* enums
 // Note number is the ACTUAL note number (ie < 0x80) of the SOURCE
-typedef size_t (*MPCControlCallback_t)(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+typedef size_t (*MPCControlCallback_t)(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
 
 // Expression of the MPC state
 typedef struct IAMForceStatus_t
 {
+    // The current mode/layout we're in
     uint8_t pad_layout;   // The mode layout we're in (MPC_PAD_LAYOUT_*)
     uint8_t force_mode;   // The FORCE mode (MPC_FORCE_MODE_*)
     uint8_t mode_buttons; // The behaviour of mode buttons (MODE_BUTTONS_*)
 
+    // The PERMANENT mode/layout (used for temporary changes)
+    uint8_t permanent_pad_layout;
+
     // Specific layouts for native Force modes
-    uint_fast8_t launch_mode_layout;
-    uint_fast8_t stepseq_mode_layout;
-    uint_fast8_t note_mode_layout;
+    uint_fast8_t launch_mode_layout;    // A/B/C/D
+    uint_fast8_t stepseq_mode_layout;   // A/B/C/D
+    uint_fast8_t note_mode_layout;      // A/B/C/D
 
     // We keep the TAP value in memory (useful for flashing effects)
     bool tap_status;
@@ -166,13 +172,13 @@ typedef struct ForceControlToMPC_s
 
 // Prototypes of the callback functions.
 // See MPCControlCallback_t for the signature
-size_t cb_default(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
-size_t cb_mode_e(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
-size_t cb_xfader(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
-size_t cb_tap_tempo(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
-size_t cb_shift(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
-size_t cb_edit_button(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
-size_t cb_play(MPCControlToForce_t *force_target, ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+size_t cb_default(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+size_t cb_xfader(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+size_t cb_tap_tempo(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+size_t cb_shift(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+size_t cb_edit_button(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
+size_t cb_play(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size);
 
 // A few shortcut functions
 extern uint8_t getForcePadNoteNumber(uint8_t pad_number, bool extra_bit);

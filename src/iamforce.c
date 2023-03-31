@@ -424,14 +424,58 @@ void invertMPCToForceMapping()
  **************************************************************************/
 
 
-inline void setLayout(uint8_t pad_layout)
+// Set layout, give status according to 'permanent' parameter
+// If false, we switch layout temporarily
+inline void setLayout(uint8_t pad_layout, bool permanent)
 {
+    // Save button states
+    uint8_t button_colors[8];
+
     // Check if we are already in the right layout
     if (IAMForceStatus.pad_layout == pad_layout)
         return;
 
-    // Set the new layout
+    // Set the new layout and button modes
     IAMForceStatus.pad_layout = pad_layout;
+    if (permanent)
+        IAMForceStatus.permanent_pad_layout = pad_layout;
+    switch(pad_layout)
+    {
+        case IAMFORCE_LAYOUT_PAD_BANK_A:
+        case IAMFORCE_LAYOUT_PAD_BANK_B:
+        case IAMFORCE_LAYOUT_PAD_BANK_C:
+        case IAMFORCE_LAYOUT_PAD_BANK_D:
+            IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_MODE;
+            break;
+        case IAMFORCE_LAYOUT_PAD_MODE:
+        case IAMFORCE_LAYOUT_PAD_MUTE:
+        case IAMFORCE_LAYOUT_PAD_COLS:
+        case IAMFORCE_LAYOUT_PAD_SCENE:
+            IAMForceStatus.mode_buttons |= ~MODE_BUTTONS_TOP_MODE;
+            break;
+    }
+
+    if (pad_layout == IAMFORCE_LAYOUT_PAD_MODE)
+    {
+        // Special case with IAMFORCE_LAYOUT_PAD_MODE: we redraw all the pads manually
+        // XXX TODO: move this at init time
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0] = COLOR_APRICOT;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][1] = COLOR_CLOVER;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][2] = COLOR_GREEN;    // Make it darker
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][3] = COLOR_GREEN;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][4] = COLOR_INDIGO;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][5] = COLOR_VIOLET;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][6] = COLOR_GREEN;    // Make it darker
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][7] = COLOR_GREEN;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][8] = COLOR_ORANGE;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][9] = COLOR_ORANGE;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][10] = COLOR_PINK;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][11] = COLOR_PINK;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][12] = COLOR_ORANGE;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][13] = COLOR_ORANGE;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][14] = COLOR_PINK;
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][15] = COLOR_PINK;
+    }
 
     // Redraw the pads
     for (uint8_t i = 0; i < 16; i++)
@@ -439,35 +483,76 @@ inline void setLayout(uint8_t pad_layout)
         setPadColorFromColorInt(i, MPCPadValues[pad_layout][i]);
     }
 
-    // Show button state
-    // XXX TODO avoid changing all button colors everytime
+    // Set button colors
+    if (IAMForceStatus.mode_buttons & MODE_BUTTONS_TOP_MODE)
+    {
+        button_colors[0] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[1] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[2] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[3] = BUTTON_COLOR_LIGHT_YELLOW;
+    }
+    else
+    {
+        button_colors[0] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[1] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[2] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[3] = BUTTON_COLOR_LIGHT_RED;
+
+    }
+    if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
+    {
+        button_colors[4] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[5] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[6] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[7] = BUTTON_COLOR_LIGHT_YELLOW;
+    }
+    else
+    {
+        button_colors[4] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[5] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[6] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[7] = BUTTON_COLOR_LIGHT_RED;
+    }
+
+    // Set specific pad colors
     switch(pad_layout)
     {
         case IAMFORCE_LAYOUT_PAD_BANK_A:
-            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_RED);
-            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_LIGHT_RED);
+            button_colors[0] = BUTTON_COLOR_RED;
             break;
         case IAMFORCE_LAYOUT_PAD_BANK_B:
-            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_RED);
-            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_LIGHT_RED);
+            button_colors[1] = BUTTON_COLOR_RED;
             break;
         case IAMFORCE_LAYOUT_PAD_BANK_C:
-            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_RED);
-            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_LIGHT_RED);
+            button_colors[2] = BUTTON_COLOR_RED;
             break;
         case IAMFORCE_LAYOUT_PAD_BANK_D:
-            setButtonColor(LIVEII_BT_BANK_A, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_B, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_C, BUTTON_COLOR_LIGHT_RED);
-            setButtonColor(LIVEII_BT_BANK_D, BUTTON_COLOR_RED);
+            button_colors[3] = BUTTON_COLOR_RED;
+            break;
+        case IAMFORCE_LAYOUT_PAD_MODE:
+            button_colors[0] = BUTTON_COLOR_YELLOW;
+            break;
+        case IAMFORCE_LAYOUT_PAD_MUTE:
+            button_colors[1] = BUTTON_COLOR_YELLOW;
+            break;
+        case IAMFORCE_LAYOUT_PAD_COLS:
+            button_colors[2] = BUTTON_COLOR_YELLOW;
+            break;
+        case IAMFORCE_LAYOUT_PAD_SCENE:
+            button_colors[3] = BUTTON_COLOR_YELLOW;
             break;
     }
+
+    // Commit colors
+    // XXX TODO avoid changing all button colors everytime
+    setButtonColor(LIVEII_BT_BANK_A, button_colors[0]);
+    setButtonColor(LIVEII_BT_BANK_B, button_colors[1]);
+    setButtonColor(LIVEII_BT_BANK_C, button_colors[2]);
+    setButtonColor(LIVEII_BT_BANK_D, button_colors[3]);
+    setButtonColor(LIVEII_BT_NOTE_REPEAT, button_colors[4]);
+    setButtonColor(LIVEII_BT_FULL_LEVEL, button_colors[5]);
+    setButtonColor(LIVEII_BT_16_LEVEL, button_colors[6]);
+    setButtonColor(LIVEII_BT_ERASE, button_colors[7]);
 
     return;
 }
@@ -482,9 +567,16 @@ inline void setButtonColor(uint8_t button, uint8_t color)
 
 // If instant_set is True, we will redraw the pad immediately (if we are in the same bank)
 // Return the number of the pad (useable in a SYSEX message) or 0xff
+
 inline int_fast8_t setLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb, bool instant_set)
 {
-    uint8_t pad_number = getMPCPadNumber(note_number);
+    uint8_t pad_number = 0xff;
+    
+    // If note_number is <16 we can be sure it's a pad number, not a note number!
+    if (note_number < 16)
+        pad_number = note_number;
+    else
+        pad_number = getMPCPadNumber(note_number);
 
     // Update the matrix
     LOG_DEBUG("      update matrix for pad %02X.%02X to %08x (current layout=%02X)", pad_layout, pad_number, rgb, IAMForceStatus.pad_layout);
@@ -552,11 +644,12 @@ void LoadMapping()
 ///////////////////////////////////////////////////////////////////////////////
 // Prepare a fake midi message in the Private midi context
 ///////////////////////////////////////////////////////////////////////////////
-void FakeMidiMessage(uint8_t buf[], size_t size)
+size_t FakeMidiMessage(uint8_t buf[], size_t size)
 {
     // LOG_DEBUG("FakeMidiMessage(buf=%p, size=%d)
     // Just put all the bytes to 0
     memset(buf, 0x00, size);
+    return size;
 }
 
 // Set pad colors
@@ -726,6 +819,23 @@ inline uint8_t getMPCPadNoteNumber(uint8_t pad_number)
         LOG_ERROR("Invalid pad number: %02X", pad_number);
         return 0xFF;
     }
+}
+
+// Project startup!!!
+// We allow this function to be pretty slow.
+void initProject()
+{
+    // We pass through all the modes
+    // X-fader: we simulate a center fader move
+    static const ForceControlToMPC_t fader_move = {
+        .callback = cb_xfader,
+        .next_control = NULL
+    };
+    uint8_t fake_buffer[] = {0x00, 0x40, 0x00};
+    cb_xfader(NULL, &fader_move, source_cc_change, 0, fake_buffer, 3);
+
+    // Display BANK A at start
+    setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
 }
 
 // MIDI READ - APP ON MPC READING AS FORCE
