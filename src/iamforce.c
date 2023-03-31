@@ -163,6 +163,54 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0d].callback = cb_mode_e,
         [0x0e].callback = cb_mode_e,
         [0x0f].callback = cb_mode_e},
+    // IAMFORCE_LAYOUT_PAD_MUTE
+    {
+        [0x00].note_number = FORCE_BT_MUTE,
+        [0x00].color = COLOR_YELLOW,
+        [0x01].note_number = FORCE_BT_SOLO,
+        [0x01].color = COLOR_BLUE,
+        [0x02].note_number = FORCE_BT_REC_ARM,
+        [0x02].color = COLOR_RED,
+        [0x03].note_number = FORCE_BT_CLIP_STOP,
+        [0x03].color = COLOR_GREEN,
+        [0x04].note_number = FORCE_BT_LEFT,
+        [0x04].color = COLOR_GREY,
+        [0x05].note_number = FORCE_BT_ASSIGN_A,
+        [0x05].color = COLOR_ORANGE,
+        [0x06].note_number = FORCE_BT_ASSIGN_B,
+        [0x06].color = COLOR_RED,
+        [0x07].note_number = FORCE_BT_RIGHT,
+        [0x07].color = COLOR_GREY,
+        [0x08].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD1, // XXX which channel is it?
+        [0x09].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD2,
+        [0x0a].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD3,
+        [0x0b].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD4,
+        [0x0c].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD5,
+        [0x0d].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD6,
+        [0x0e].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD7,
+        [0x0f].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD8},
+    // IAMFORCE_LAYOUT_PAD_COLS
+    {
+        [0x00].note_number = FORCE_BT_UNSET,
+        [0x01].note_number = FORCE_BT_UP,
+        [0x01].color = COLOR_GREY,
+        [0x02].note_number = FORCE_BT_UNSET,
+        [0x03].note_number = FORCE_BT_UNSET,
+        [0x04].note_number = FORCE_BT_LEFT,
+        [0x04].color = COLOR_GREY,
+        [0x05].note_number = FORCE_BT_DOWN,
+        [0x05].color = COLOR_GREY,
+        [0x06].note_number = FORCE_BT_UNSET,
+        [0x07].note_number = FORCE_BT_RIGHT,
+        [0x07].color = COLOR_GREY,
+        [0x08].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD1, // XXX Which channel is it?
+        [0x09].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD2,
+        [0x0a].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD3,
+        [0x0b].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD4,
+        [0x0c].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD5,
+        [0x0d].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD6,
+        [0x0e].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD7,
+        [0x0f].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD8},
     // SCENE MODE
     {
         // 1st line
@@ -185,54 +233,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0d].note_number = FORCE_BT_UNSET,
         [0x0e].note_number = FORCE_BT_LAUNCH_4,
         [0x0f].note_number = FORCE_BT_LAUNCH_8},
-    // IAMFORCE_LAYOUT_PAD_MUTE
-    {
-        [0x00].note_number = FORCE_BT_MUTE,
-        [0x00].color = COLOR_YELLOW,
-        [0x01].note_number = FORCE_BT_SOLO,
-        [0x01].color = COLOR_BLUE,
-        [0x02].note_number = FORCE_BT_REC_ARM,
-        [0x02].color = COLOR_RED,
-        [0x03].note_number = FORCE_BT_CLIP_STOP,
-        [0x03].color = COLOR_GREEN,
-        [0x04].note_number = FORCE_BT_LEFT,
-        [0x04].color = COLOR_GREY,
-        [0x05].note_number = FORCE_BT_ASSIGN_A,
-        [0x05].color = COLOR_ORANGE,
-        [0x06].note_number = FORCE_BT_ASSIGN_B,
-        [0x06].color = COLOR_RED,
-        [0x07].note_number = FORCE_BT_RIGHT,
-        [0x07].color = COLOR_GREY,
-        [0x08].note_number = FORCE_BT_MUTE_PAD1, // XXX which channel is it?
-        [0x09].note_number = FORCE_BT_MUTE_PAD2,
-        [0x0a].note_number = FORCE_BT_MUTE_PAD3,
-        [0x0b].note_number = FORCE_BT_MUTE_PAD4,
-        [0x0c].note_number = FORCE_BT_MUTE_PAD5,
-        [0x0d].note_number = FORCE_BT_MUTE_PAD6,
-        [0x0e].note_number = FORCE_BT_MUTE_PAD7,
-        [0x0f].note_number = FORCE_BT_MUTE_PAD8},
-    // IAMFORCE_LAYOUT_PAD_COLS
-    {
-        [0x00].note_number = FORCE_BT_UNSET,
-        [0x01].note_number = FORCE_BT_UP,
-        [0x01].color = COLOR_GREY,
-        [0x02].note_number = FORCE_BT_UNSET,
-        [0x03].note_number = FORCE_BT_UNSET,
-        [0x04].note_number = FORCE_BT_LEFT,
-        [0x04].color = COLOR_GREY,
-        [0x05].note_number = FORCE_BT_DOWN,
-        [0x05].color = COLOR_GREY,
-        [0x06].note_number = FORCE_BT_UNSET,
-        [0x07].note_number = FORCE_BT_RIGHT,
-        [0x07].color = COLOR_GREY,
-        [0x08].note_number = FORCE_BT_COLUMN_PAD1, // XXX Which channel is it?
-        [0x09].note_number = FORCE_BT_COLUMN_PAD2,
-        [0x0a].note_number = FORCE_BT_COLUMN_PAD3,
-        [0x0b].note_number = FORCE_BT_COLUMN_PAD4,
-        [0x0c].note_number = FORCE_BT_COLUMN_PAD5,
-        [0x0d].note_number = FORCE_BT_COLUMN_PAD6,
-        [0x0e].note_number = FORCE_BT_COLUMN_PAD7,
-        [0x0f].note_number = FORCE_BT_COLUMN_PAD8},
+
     // IAMFORCE_LAYOUT_PAD_XFDR
     {
         [0x00].callback = cb_xfader,
@@ -422,7 +423,6 @@ void invertMPCToForceMapping()
  *                                                                        *
  **************************************************************************/
 
-
 // Set layout, give status according to 'permanent' parameter
 // If false, we switch layout temporarily
 inline void setLayout(uint8_t pad_layout, bool permanent)
@@ -445,20 +445,20 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     IAMForceStatus.pad_layout = pad_layout;
     if (permanent)
         IAMForceStatus.permanent_pad_layout = pad_layout;
-    switch(pad_layout)
+    switch (pad_layout)
     {
-        case IAMFORCE_LAYOUT_PAD_BANK_A:
-        case IAMFORCE_LAYOUT_PAD_BANK_B:
-        case IAMFORCE_LAYOUT_PAD_BANK_C:
-        case IAMFORCE_LAYOUT_PAD_BANK_D:
-            IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_MODE;
-            break;
-        case IAMFORCE_LAYOUT_PAD_MODE:
-        case IAMFORCE_LAYOUT_PAD_MUTE:
-        case IAMFORCE_LAYOUT_PAD_COLS:
-        case IAMFORCE_LAYOUT_PAD_SCENE:
-            IAMForceStatus.mode_buttons |= MODE_BUTTONS_TOP_MODE;
-            break;
+    case IAMFORCE_LAYOUT_PAD_BANK_A:
+    case IAMFORCE_LAYOUT_PAD_BANK_B:
+    case IAMFORCE_LAYOUT_PAD_BANK_C:
+    case IAMFORCE_LAYOUT_PAD_BANK_D:
+        IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_MODE;
+        break;
+    case IAMFORCE_LAYOUT_PAD_MODE:
+    case IAMFORCE_LAYOUT_PAD_MUTE:
+    case IAMFORCE_LAYOUT_PAD_COLS:
+    case IAMFORCE_LAYOUT_PAD_SCENE:
+        IAMForceStatus.mode_buttons |= MODE_BUTTONS_TOP_MODE;
+        break;
     }
     LOG_DEBUG("    new mode buttons: %02x", IAMForceStatus.mode_buttons);
 
@@ -468,11 +468,11 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
         // XXX TODO: move this at init time
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0] = COLOR_APRICOT;
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][1] = COLOR_CLOVER;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][2] = COLOR_GREEN;    // Make it darker
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][2] = COLOR_GREEN; // Make it darker
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][3] = COLOR_GREEN;
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][4] = COLOR_INDIGO;
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][5] = COLOR_VIOLET;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][6] = COLOR_GREEN;    // Make it darker
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][6] = COLOR_GREEN; // Make it darker
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][7] = COLOR_GREEN;
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][8] = COLOR_ORANGE;
         MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][9] = COLOR_ORANGE;
@@ -504,7 +504,6 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
         button_colors[1] = BUTTON_COLOR_LIGHT_RED;
         button_colors[2] = BUTTON_COLOR_LIGHT_RED;
         button_colors[3] = BUTTON_COLOR_LIGHT_RED;
-
     }
     if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
     {
@@ -515,39 +514,39 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     }
     else
     {
-        button_colors[4] = BUTTON_COLOR_LIGHT_YELLOW;
-        button_colors[5] = BUTTON_COLOR_LIGHT_YELLOW;
-        button_colors[6] = BUTTON_COLOR_LIGHT_YELLOW;
-        button_colors[7] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[4] = BUTTON_COLOR_OFF;
+        button_colors[5] = BUTTON_COLOR_OFF;
+        button_colors[6] = BUTTON_COLOR_OFF;
+        button_colors[7] = BUTTON_COLOR_OFF;
     }
 
     // Set specific pad colors
-    switch(pad_layout)
+    switch (pad_layout)
     {
-        case IAMFORCE_LAYOUT_PAD_BANK_A:
-            button_colors[0] = BUTTON_COLOR_RED;
-            break;
-        case IAMFORCE_LAYOUT_PAD_BANK_B:
-            button_colors[1] = BUTTON_COLOR_RED;
-            break;
-        case IAMFORCE_LAYOUT_PAD_BANK_C:
-            button_colors[2] = BUTTON_COLOR_RED;
-            break;
-        case IAMFORCE_LAYOUT_PAD_BANK_D:
-            button_colors[3] = BUTTON_COLOR_RED;
-            break;
-        case IAMFORCE_LAYOUT_PAD_MODE:
-            button_colors[0] = BUTTON_COLOR_YELLOW;
-            break;
-        case IAMFORCE_LAYOUT_PAD_MUTE:
-            button_colors[1] = BUTTON_COLOR_YELLOW;
-            break;
-        case IAMFORCE_LAYOUT_PAD_COLS:
-            button_colors[2] = BUTTON_COLOR_YELLOW;
-            break;
-        case IAMFORCE_LAYOUT_PAD_SCENE:
-            button_colors[3] = BUTTON_COLOR_YELLOW;
-            break;
+    case IAMFORCE_LAYOUT_PAD_BANK_A:
+        button_colors[0] = BUTTON_COLOR_RED;
+        break;
+    case IAMFORCE_LAYOUT_PAD_BANK_B:
+        button_colors[1] = BUTTON_COLOR_RED;
+        break;
+    case IAMFORCE_LAYOUT_PAD_BANK_C:
+        button_colors[2] = BUTTON_COLOR_RED;
+        break;
+    case IAMFORCE_LAYOUT_PAD_BANK_D:
+        button_colors[3] = BUTTON_COLOR_RED;
+        break;
+    case IAMFORCE_LAYOUT_PAD_MODE:
+        button_colors[0] = BUTTON_COLOR_YELLOW;
+        break;
+    case IAMFORCE_LAYOUT_PAD_MUTE:
+        button_colors[1] = BUTTON_COLOR_YELLOW;
+        break;
+    case IAMFORCE_LAYOUT_PAD_COLS:
+        button_colors[2] = BUTTON_COLOR_YELLOW;
+        break;
+    case IAMFORCE_LAYOUT_PAD_SCENE:
+        button_colors[3] = BUTTON_COLOR_YELLOW;
+        break;
     }
 
     // Commit colors
@@ -571,14 +570,13 @@ inline void setButtonColor(uint8_t button, uint8_t color)
     return;
 }
 
-
 // If instant_set is True, we will redraw the pad immediately (if we are in the same bank)
 // Return the number of the pad (useable in a SYSEX message) or 0xff
 
 inline int_fast8_t setLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColor_t rgb, bool instant_set)
 {
     uint8_t pad_number = 0xff;
-    
+
     // If note_number is <16 we can be sure it's a pad number, not a note number!
     if (note_number < 16)
         pad_number = note_number;
@@ -641,7 +639,7 @@ void LoadMapping()
     for (int i = 0; i < IAMFORCE_LAYOUT_N; i++)
     {
         for (int j = 0; j < 16; j++)
-            MPCPadValues[i][j] = COLOR_BLACK;
+            MPCPadValues[i][j] = MPCPadToForce[i][j].color;
     }
 
     // Initialize additional MPC status data
@@ -655,6 +653,11 @@ size_t FakeMidiMessage(uint8_t buf[], size_t size)
 {
     // LOG_DEBUG("FakeMidiMessage(buf=%p, size=%d)
     // Just put all the bytes to 0
+    if (size > 3)
+    {
+        LOG_ERROR("FakeMidiMessage : size is too big (%d)", size);
+        exit(-1);
+    }
     memset(buf, 0x00, size);
     return size;
 }
@@ -782,7 +785,16 @@ uint8_t getMPCPadNumber(uint8_t note_number)
 // This is the reverse of getMPCPadNumber
 uint8_t getForcePadNoteNumber(uint8_t pad_number, bool add_extra_bit)
 {
-    return pad_number + FORCEPADS_TABLE_IDX_OFFSET + (add_extra_bit ? 0x80 : 0);
+    LOG_DEBUG("Looking for pad number=%02x" , pad_number);
+    if (pad_number < 64)
+        return pad_number + FORCEPADS_TABLE_IDX_OFFSET + (add_extra_bit ? 0x80 : 0);
+    return FORCE_BT_COLUMN_PAD1 + (add_extra_bit ? 0x80 : 0);
+    // if (pad_number <= 72)
+    //     return FORCE_BT_COLUMN_PAD1 + (add_extra_bit ? 0x80 : 0);
+    // if (pad_number <= 80)
+    //     return FORCE_BT_MUTE_PAD1 + (add_extra_bit ? 0x80 : 0);
+    LOG_ERROR("Pad number %02x can't be converted to note number", pad_number);
+    exit(-1);
 }
 
 // This is the reverse of getMPCPadNumber
@@ -836,8 +848,7 @@ void initProject()
     // X-fader: we simulate a center fader move
     static const ForceControlToMPC_t fader_move = {
         .callback = cb_xfader,
-        .next_control = NULL
-    };
+        .next_control = NULL};
     uint8_t fake_buffer[] = {0x00, 0x40, 0x00};
     cb_xfader(NULL, &fader_move, source_cc_change, 0, fake_buffer, 3);
 
@@ -878,7 +889,6 @@ void StoreButtonPress(uint8_t mpc_button_number, bool key_down)
     IAMForceStatus.last_button_down = mpc_button_number;
     clock_gettime(CLOCK_MONOTONIC_RAW, &IAMForceStatus.started_button_down);
 }
-
 
 // MIDI READ - APP ON MPC READING AS FORCE
 // Here we read the MIDI messages from the MPC and we send them to the Force
@@ -1006,11 +1016,12 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 // - Discard messages that would affect our "bank" buttons
 // - Discard messages that would affect pads that are not visible
 ///////////////////////////////////////////////////////////////////////////////
-void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
+size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
 {
     uint8_t *midi_buffer = (uint8_t *)midiBuffer;
     uint8_t note_number;
     size_t i = 0;
+    size_t erase_start = 0;
     size_t callback_i = 0;
     ForceControlToMPC_t *force_to_mpc_mapping_p;
     SourceType_t source_type = source_unkown;
@@ -1024,6 +1035,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         {
             // Update the sysex id in the sysex for our original hardware
             // LOG_DEBUG("Inside Akai Sysex\n");
+            erase_start = i;
             i += sizeof(AkaiSysex);
             midi_buffer[i] = DeviceInfoBloc[MPCOriginalId].sysexId;
             i++;
@@ -1049,24 +1061,61 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 {
                     if (force_to_mpc_mapping_p->callback == NULL)
                     {
-                        LOG_DEBUG("NULL callback for Force note %02X", note_number);
-                        callback_i = 7;
-                        break;
+                        LOG_DEBUG("NULL callback for Force note %02X, we swallow MIDI message", note_number);
+                        callback_i = 0;
+                        i++;        // Avoid infinite loops
                     }
-                    LOG_DEBUG("Calling callback for PAD %02X change (note number=%02X)", midi_buffer[i + 3], note_number);
-                    callback_i = force_to_mpc_mapping_p->callback(
-                        NULL,
-                        force_to_mpc_mapping_p,
-                        source_type,
-                        note_number & 0x7F,
-                        &midi_buffer[i],
-                        size - i);
-                    force_to_mpc_mapping_p = force_to_mpc_mapping_p->next_control;
-                }
-                i += callback_i; // Only advance once even if we called several callbacks
+                    else
+                    {
+                        LOG_DEBUG("Calling callback for PAD %02X change (note number=%02X)", midi_buffer[i + 3], note_number);
+                        callback_i = force_to_mpc_mapping_p->callback(
+                            NULL,
+                            force_to_mpc_mapping_p,
+                            source_type,
+                            note_number & 0x7F,
+                            &midi_buffer[i],
+                            size - i);
+                        force_to_mpc_mapping_p = force_to_mpc_mapping_p->next_control;
+                        LOG_DEBUG(".....callback return len=%d", callback_i);
+                    }
 
-                // Deliberately exit the program here
-                // exit(-1);
+                    // Swallow useless messages
+                    if (callback_i > 0)
+                        i += callback_i; // Only advance once even if we called several callbacks
+                    else
+                    {
+                        // We erase the message if we have no callback
+                        // i -= (sizeof(MPCSysexPadColorFn) + sizeof(AkaiSysex) + 1);
+                        // XXX Make this overwrite proof
+                        while (midi_buffer[i] != 0xF7)
+                            i++;
+                        i++;
+                        LOG_DEBUG("...erase MIDI message from %d to %d (new len=%d)", erase_start, i, size - (i - erase_start));
+                        memcpy(&midi_buffer[erase_start], &midi_buffer[i], size - i);
+                        size = size - (i - erase_start);
+                        i = erase_start;
+                        LOG_DEBUG("....new buffer...");
+                        ShowBufferHexDump(midi_buffer, size, 0x00);
+                    }
+                }
+            }
+            else if (midi_buffer[i] == 0x0B)
+            {
+                // We erase the message if we have no callback
+                LOG_DEBUG("Discard 0B message");
+                while (midi_buffer[i] != 0xF7)
+                    i++;
+                i++;
+                // LOG_DEBUG("....erasing message from %d to %d", erase_start, i);
+                memcpy(&midi_buffer[erase_start], &midi_buffer[i], size - i);
+                size = size - (i - erase_start);
+                i = erase_start;
+            }
+            else
+            {
+                // LOG_DEBUG("Sysex not handled\n");
+                // We erase the message until 'F7' is read
+                i++;
             }
         }
 
@@ -1075,6 +1124,8 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         else if (midi_buffer[i] == 0xB0)
         {
             note_number = midi_buffer[i + 1];
+            // if (midi_buffer[i + 1] == 0x03 && midi_buffer[i + 2] == 0x03)
+            //     exit(-1);
             source_type = source_led;
             force_to_mpc_mapping_p = &ForceControlToMPC[note_number];
             while (force_to_mpc_mapping_p != NULL)
@@ -1082,7 +1133,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 if (force_to_mpc_mapping_p->callback == NULL)
                 {
                     LOG_DEBUG("NULL callback for Force note %02X", note_number);
-                    callback_i = 3;
+                    callback_i = FakeMidiMessage(&midi_buffer[i], 3);
                     break;
                 }
                 callback_i = force_to_mpc_mapping_p->callback(
@@ -1100,4 +1151,7 @@ void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
         else
             i++;
     }
+
+    // Return what we've read
+    return size;
 }

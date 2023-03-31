@@ -109,7 +109,7 @@ void cb_default_read(const MPCControlToForce_t *force_target, SourceType_t sourc
 
 // Force ====> MPC
 // This is more complicated because it's where SYSEX magic happens.
-void cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
+size_t cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
     switch (source_type)
     {
@@ -184,8 +184,10 @@ void cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t source
             LOG_DEBUG("PAD SYSEX message from Force pad %02x to MPC pad %02x", note_number, pad_number);
             if (pad_number == 0xFF)
             {
-                LOG_DEBUG("    Discarded");
-                FakeMidiMessage(midi_buffer, buffer_size);
+                LOG_DEBUG("    WARNING: Discarded");
+                return 0;
+                // The FakeMidiMessage here doesn't actually work
+                // FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
             }
             else
             {
@@ -211,6 +213,8 @@ void cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t source
         // Meh. We transmit anyway (why not?)
         break;
     }
+
+    return SOURCE_MESSAGE_LENGTH[source_type];
 }
 
 size_t cb_default(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
@@ -225,7 +229,7 @@ size_t cb_default(const MPCControlToForce_t *force_target, const ForceControlToM
     else if (mpc_target != NULL && mpc_target->note_number != 0xff)
     {
         LOG_DEBUG("...map Force %02x (source type=%d) ===> to MPC %02x.%02x", note_number, source_type, mpc_target->bank, mpc_target->note_number);
-        cb_default_write(mpc_target, source_type, note_number, midi_buffer, buffer_size);
+        return cb_default_write(mpc_target, source_type, note_number, midi_buffer, buffer_size);
     }
     else
     {
@@ -499,21 +503,44 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
         switch (note_number)
         {
         case LIVEII_BT_BANK_A:
-        case LIVEII_BT_BANK_B:
-        case LIVEII_BT_BANK_C:
-        case LIVEII_BT_BANK_D:
-            // If it's NOT a click, we restore previous mode
-            if (!IAMForceStatus.is_click)
+            if (IAMForceStatus.is_click)
             {
-                LOG_DEBUG("Not a click, we restore mode %02x", IAMForceStatus.pad_layout);
-                setLayout(IAMForceStatus.permanent_pad_layout, true);
+                if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
+                    setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
             }
-            // If it's a click, we save the new mode
             else
+                setLayout(IAMForceStatus.permanent_pad_layout, true);
+            FakeMidiMessage(midi_buffer, 3);
+            break;
+        case LIVEII_BT_BANK_B:
+            if (IAMForceStatus.is_click)
             {
-                LOG_DEBUG("It's a click, we confirm mode %02x", IAMForceStatus.pad_layout);
-                setLayout(IAMForceStatus.pad_layout, true);
+                if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
+                    setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, true);
             }
+            else
+                setLayout(IAMForceStatus.permanent_pad_layout, true);
+            FakeMidiMessage(midi_buffer, 3);
+            break;
+        case LIVEII_BT_BANK_C:
+            if (IAMForceStatus.is_click)
+            {
+                if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
+                    setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, true);
+            }
+            else
+                setLayout(IAMForceStatus.permanent_pad_layout, true);
+            FakeMidiMessage(midi_buffer, 3);
+            break;
+        case LIVEII_BT_BANK_D:
+            if (IAMForceStatus.is_click)
+            {
+                if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
+                    setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, true);
+            }
+            else
+                setLayout(IAMForceStatus.permanent_pad_layout, true);
+            FakeMidiMessage(midi_buffer, 3);
             break;
 
         case LIVEII_BT_NOTE_REPEAT:
@@ -594,11 +621,11 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
         // 1st line
         case LIVEII_PAD_TL0:
             setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
-            FakeMidiMessage(midi_buffer, buffer_size);
+            FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL1:
             setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
-            FakeMidiMessage(midi_buffer, buffer_size);
+            FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL2:
             setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
@@ -614,11 +641,11 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
         // 2d line
         case LIVEII_PAD_TL4:
             setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
-            FakeMidiMessage(midi_buffer, buffer_size);
+            FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL5:
             setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
-            FakeMidiMessage(midi_buffer, buffer_size);
+            FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL6:
             setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
@@ -676,7 +703,7 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
 
         default:
             LOG_ERROR("cb_mode_e: unknown note number %d", note_number);
-            FakeMidiMessage(midi_buffer, buffer_size);
+            FakeMidiMessage(midi_buffer, 3);
         }
     }
     else
@@ -728,9 +755,9 @@ size_t cb_xfader(const MPCControlToForce_t *force_target, const ForceControlToMP
 
 size_t cb_shift(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
-    LOG_DEBUG("Entering shift callback");
-    FakeMidiMessage(midi_buffer, buffer_size);
-    return buffer_size;
+    LOG_DEBUG("Entering shift callback, just saving shift status");
+    IAMForceStatus.shift_hold = (note_number == 0x7F);
+    return cb_default(force_target, mpc_target, source_type, note_number, midi_buffer, buffer_size);
 }
 
 size_t cb_edit_button(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
@@ -749,6 +776,7 @@ size_t cb_edit_button(const MPCControlToForce_t *force_target, const ForceContro
 
 size_t cb_play(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
-    FakeMidiMessage(midi_buffer, buffer_size);
-    return buffer_size;
+    // XXX CHECK AGAINST BUFFER OVERFLOW
+    FakeMidiMessage(midi_buffer, 3);
+    return 3;
 }

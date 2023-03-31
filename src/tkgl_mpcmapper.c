@@ -601,28 +601,40 @@ static void tkgl_init()
 ////////////////////////////////////////////////////////////////////////////////
 // Clean DUMP of a buffer to screen
 ////////////////////////////////////////////////////////////////////////////////
-static void ShowBufferHexDump(const uint8_t *data, size_t sz, uint8_t nl)
+void ShowBufferHexDump(const uint8_t *data, size_t sz, uint8_t nl)
 {
     uint8_t b;
-    char asciiBuff[33];
-    uint8_t c = 0;
+    uint16_t idx = 0;
+    // char asciiBuff[33];
+    // uint8_t c = 0;
 
-    for (uint16_t idx = 0; idx < sz; idx++)
+    tklog_trace("");
+    for (idx = 0; idx < sz; idx++)
     {
-        if (c == 0 && idx >= 0)
-            tklog_trace("");
         b = (*data++);
         fprintf(stdout, "%02X ", b);
-        asciiBuff[c++] = (b >= 0x20 && b < 127 ? b : '.');
-        if (c == nl || idx == sz - 1)
+        if (b == 0xF7)
         {
-            asciiBuff[c] = 0;
-            for (; c < nl; c++)
-                fprintf(stdout, "   ");
-            c = 0;
-            fprintf(stdout, " | %s\n", asciiBuff);
+            idx++;
+            break;
         }
+        // asciiBuff[c++] = (b >= 0x20 && b < 127 ? b : '.');
+        // if (c == nl || idx == sz - 1)
+        // {
+        //     asciiBuff[c] = 0;
+        //     for (; c < nl; c++)
+        //         fprintf(stdout, "   ");
+        //     c = 0;
+        //     fprintf(stdout, " | %s\n", asciiBuff);
+        // }
     }
+
+    fprintf(stdout, " -... \n");
+    if (idx < sz)
+    {
+        ShowBufferHexDump(data, sz - idx, nl);
+    }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -908,6 +920,8 @@ ssize_t snd_rawmidi_read(snd_rawmidi_t *rawmidi, void *buffer, size_t size)
 ///////////////////////////////////////////////////////////////////////////////
 ssize_t snd_rawmidi_write(snd_rawmidi_t *rawmidi, const void *buffer, size_t size)
 {
+    size_t new_size = 0;
+
     if (rawMidiDumpFlag)
         RawMidiDump(rawmidi, 'i', 'w', buffer, size);
 
@@ -943,15 +957,16 @@ ssize_t snd_rawmidi_write(snd_rawmidi_t *rawmidi, const void *buffer, size_t siz
             // Simulate a Force on a MPC
             else
             {
-                Mpc_MapAppWriteToForce(buffer, size);
+                new_size += Mpc_MapAppWriteToForce(buffer, size);
+                // LOG_DEBUG("   Input len: %d, output len: %d", size, new_size);
             }
         }
     }
 
     if (rawMidiDumpPostFlag)
-        RawMidiDump(rawmidi, 'o', 'w', buffer, size);
+        RawMidiDump(rawmidi, 'o', 'w', buffer, new_size);
 
-    return orig_snd_rawmidi_write(rawmidi, buffer, size);
+    return orig_snd_rawmidi_write(rawmidi, buffer, new_size);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

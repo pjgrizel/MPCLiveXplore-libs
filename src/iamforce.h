@@ -16,7 +16,7 @@
 
 void LoadMapping();
 size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size);
-void Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
+size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size);
 
 extern void setPadColorFromColorInt(const uint8_t pad_number, const PadColor_t rgbColorValue);
 extern void setPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t g, const uint8_t b);
@@ -69,9 +69,9 @@ extern void setButtonColor(uint8_t button, uint8_t color);
 #define IAMFORCE_LAYOUT_PAD_BANK_C 0x02
 #define IAMFORCE_LAYOUT_PAD_BANK_D 0x03
 #define IAMFORCE_LAYOUT_PAD_MODE 0x04
-#define IAMFORCE_LAYOUT_PAD_SCENE 0x05
-#define IAMFORCE_LAYOUT_PAD_MUTE 0x06
-#define IAMFORCE_LAYOUT_PAD_COLS 0x07
+#define IAMFORCE_LAYOUT_PAD_MUTE 0x05
+#define IAMFORCE_LAYOUT_PAD_COLS 0x06
+#define IAMFORCE_LAYOUT_PAD_SCENE 0x07
 #define IAMFORCE_LAYOUT_PAD_XFDR 0x08
 #define IAMFORCE_LAYOUT_NONE 0xFF
 

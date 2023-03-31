@@ -267,6 +267,7 @@ extern typeof(&open64) orig_open64;
 extern typeof(&close) orig_close;
 
 // Debug stuff
+extern void ShowBufferHexDump(const uint8_t *data, size_t sz, uint8_t nl);
 enum
 {
     LOG_TRACE,
