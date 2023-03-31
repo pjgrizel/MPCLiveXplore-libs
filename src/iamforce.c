@@ -428,6 +428,11 @@ void invertMPCToForceMapping()
 // If false, we switch layout temporarily
 inline void setLayout(uint8_t pad_layout, bool permanent)
 {
+    LOG_DEBUG("setLayout(%02x, %d)", pad_layout, permanent);
+    LOG_DEBUG("    current layout: %02x", IAMForceStatus.pad_layout);
+    LOG_DEBUG("    permanent layout: %02x", IAMForceStatus.permanent_pad_layout);
+    LOG_DEBUG("    mode buttons: %02x", IAMForceStatus.mode_buttons);
+
     // Save button states
     uint8_t button_colors[8];
 
@@ -436,6 +441,8 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
         return;
 
     // Set the new layout and button modes
+    // XXX TODO: locking of banks
+    // XXX For now, bottom row is always EDIT, not matter what.
     IAMForceStatus.pad_layout = pad_layout;
     if (permanent)
         IAMForceStatus.permanent_pad_layout = pad_layout;
@@ -451,9 +458,10 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
         case IAMFORCE_LAYOUT_PAD_MUTE:
         case IAMFORCE_LAYOUT_PAD_COLS:
         case IAMFORCE_LAYOUT_PAD_SCENE:
-            IAMForceStatus.mode_buttons |= ~MODE_BUTTONS_TOP_MODE;
+            IAMForceStatus.mode_buttons |= MODE_BUTTONS_TOP_MODE;
             break;
     }
+    LOG_DEBUG("    new mode buttons: %02x", IAMForceStatus.mode_buttons);
 
     if (pad_layout == IAMFORCE_LAYOUT_PAD_MODE)
     {
@@ -508,10 +516,10 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     }
     else
     {
-        button_colors[4] = BUTTON_COLOR_LIGHT_RED;
-        button_colors[5] = BUTTON_COLOR_LIGHT_RED;
-        button_colors[6] = BUTTON_COLOR_LIGHT_RED;
-        button_colors[7] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[4] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[5] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[6] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[7] = BUTTON_COLOR_LIGHT_YELLOW;
     }
 
     // Set specific pad colors
@@ -593,7 +601,7 @@ inline int_fast8_t setLayoutPad(uint8_t pad_layout, uint8_t note_number, PadColo
         }
         else
         {
-            LOG_DEBUG("     ...we should draw it but we are not allowed to do so! Return %02X", pad_number);
+            // LOG_DEBUG("     ...we should draw it but we are not allowed to do so! Return %02X", pad_number);
             return pad_number;
         }
     }
