@@ -143,6 +143,7 @@ typedef struct IAMForceStatus_t
 
     // This is how we handle "clicks" and "double clicks"
     uint8_t last_button_down;
+    bool is_click;          // True if last button down was a click
     struct timespec started_button_down;
 } IAMForceStatus_t;
 extern IAMForceStatus_t IAMForceStatus;

@@ -846,9 +846,10 @@ void initProject()
     setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
 }
 
-
+// NOTA: this is not thread safe!
 void StoreButtonDown(uint8_t mpc_button_number)
 {
+    
     IAMForceStatus.last_button_down = mpc_button_number;
     clock_gettime(CLOCK_MONOTONIC_RAW, &IAMForceStatus.started_button_down);
 }
