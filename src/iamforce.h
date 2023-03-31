@@ -184,7 +184,7 @@ size_t cb_play(const MPCControlToForce_t *force_target, const ForceControlToMPC_
 extern uint8_t getForcePadNoteNumber(uint8_t pad_number, bool extra_bit);
 
 // Misc stuff
-#define BATTERY_CHECK_INTERVAL 10 // Check battery status every 10 tap ticks
+#define BATTERY_CHECK_INTERVAL 10   // Check battery status every n tap ticks
 
 // Basic assignments
 #define FORCE_BT_ENCODER 0x6F  // ok

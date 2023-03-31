@@ -21,24 +21,12 @@
 
 /**************************************************************************
  *                                                                        *
- *  utilities                                                             *
- *                                                                        *
- **************************************************************************/
-
-inline void StoreButtonDown(uint8_t mpc_button_number)
-{
-    IAMForceStatus.last_button_down = mpc_button_number;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &IAMForceStatus.started_button_down);
-}
-
-/**************************************************************************
- *                                                                        *
  *  Callbacks                                                             *
  *                                                                        *
  **************************************************************************/
 
 // Read portion of the default callback
-inline void cb_default_read(const MPCControlToForce_t *force_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
+void cb_default_read(const MPCControlToForce_t *force_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
     // SET PAD COLORS SYSEX ------------------------------------------------
     //                      v----- We start our midi buffer HERE, our pad # will be at i + sizeof(MPCSysexPadColorFn)
@@ -50,6 +38,7 @@ inline void cb_default_read(const MPCControlToForce_t *force_target, SourceType_
     case source_pad_note_on:
         midi_buffer[0] = (force_target->note_number >= 0x80 ? 0x99 : 0x90);
         midi_buffer[1] = (force_target->note_number >= 0x80 ? force_target->note_number - 0x80 : force_target->note_number);
+        LOG_DEBUG("PAD ON: %02x %02x", midi_buffer[0], midi_buffer[1]);
         break;
 
     case source_pad_note_off: // XXX do we *HAVE* to do this??
@@ -67,7 +56,6 @@ inline void cb_default_read(const MPCControlToForce_t *force_target, SourceType_
         }
         else
         {
-            StoreButtonDown(note_number);
             midi_buffer[0] = 0x90;
             midi_buffer[1] = force_target->note_number;
         }
@@ -82,7 +70,6 @@ inline void cb_default_read(const MPCControlToForce_t *force_target, SourceType_
         }
         else
         {
-            StoreButtonDown(note_number);   // XXX nah it's a button up!!!
             midi_buffer[0] = 0x90;
             midi_buffer[1] = force_target->note_number;
         }
@@ -163,6 +150,7 @@ void cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t source
                 midi_buffer[2] = BUTTON_COLOR_YELLOW_RED;
                 break;
             default:
+                LOG_DEBUG("    Unexpected source LED value for %02x: %02x", mpc_target->note_number, mpc_target->color);
                 midi_buffer[2] = BUTTON_COLOR_RED;
                 break;
             }
@@ -186,12 +174,32 @@ void cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t source
         if (mpc_target->bank != IAMFORCE_LAYOUT_NONE)
         {
             PadColor_t pad_color = midi_buffer[4] << 16 | midi_buffer[5] << 8 | midi_buffer[6];
-            int_fast8_t pad_number = setLayoutPad(
+            uint_fast8_t pad_number = setLayoutPad(
                 mpc_target->bank,
                 mpc_target->note_number & 0x7f,
                 pad_color,
                 false);
-            midi_buffer[3] = pad_number;
+
+            // Transpose MPC pad number or discard message
+            LOG_DEBUG("PAD SYSEX message from Force pad %02x to MPC pad %02x", note_number, pad_number);
+            if (pad_number == 0xFF)
+            {
+                LOG_DEBUG("    Discarded");
+                FakeMidiMessage(midi_buffer, buffer_size);
+            }
+            else
+            {
+                if (pad_number < 4)
+                    pad_number = pad_number + 12;
+                else if (pad_number < 8)
+                    pad_number = pad_number + 4;
+                else if (pad_number < 12)
+                    pad_number = pad_number - 4;
+                else
+                    pad_number = pad_number - 12;
+                midi_buffer[3] = pad_number;
+            }
+            
         }
         // FORCE PAD =======> MPC BUTTON
         else
@@ -232,14 +240,14 @@ size_t cb_tap_tempo(const MPCControlToForce_t *force_target, const ForceControlT
 {
     // The tools of the trade
     int fd;
-    uint8_t capacity = 0;
-    uint8_t blink = 0;
-    uint8_t other_leds = 0x01;
+    static uint8_t capacity = 0;
+    static uint8_t scale = 0;
+    static uint8_t blink = 0;
+    static uint8_t other_leds = 0x01;
     char buffer[16];
     char intBuffer[4];
-    uint8_t battery_status = BATTERY_UNKNOWN;
+    static uint8_t battery_status = BATTERY_UNKNOWN;
     ssize_t bytesRead;
-    uint8_t scale;
 
     // If buffer is too small, we can't do much about it
     if (buffer_size < 3)
@@ -280,83 +288,86 @@ size_t cb_tap_tempo(const MPCControlToForce_t *force_target, const ForceControlT
         if (strcmp(buffer, "Charging\n") == 0)
         {
             battery_status = BATTERY_CHARGING;
-            other_leds = 0x02;
+            other_leds = 0x01;
         }
         else if (strcmp(buffer, "Full\n") == 0)
         {
             battery_status = BATTERY_FULL;
             other_leds = 0x02;
         }
-
-        // If battery is currently charging, we make the last light blink
-        // by decreasing the scale by 1
-        if (battery_status == BATTERY_CHARGING && !IAMForceStatus.tap_status && scale > 0)
-            blink = 1;
-
-        // Reset lights
-        uint8_t light_1[] = {0xB0, 0x5A, 0x00};
-        uint8_t light_2[] = {0xB0, 0x5B, 0x00};
-        uint8_t light_3[] = {0xB0, 0x5C, 0x00};
-        uint8_t light_4[] = {0xB0, 0x5D, 0x00};
-
-        // Handle 'current' light
-        switch (scale)
+        else
         {
-        case 0:
-            break;
-        case 1:
-            light_1[2] = 0x01 - blink;
-            break;
-        case 2:
-            light_1[2] = 0x02 - blink;
-            break;
-        case 3:
-            light_1[2] = other_leds;
-            light_2[2] = 0x01 - blink;
-            break;
-        case 4:
-            light_1[2] = other_leds;
-            light_2[2] = 0x02 - blink;
-            break;
-        case 5:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = 0x01 - blink;
-            break;
-        case 6:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = 0x02 - blink;
-            break;
-        case 7:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = other_leds;
-            light_4[2] = 0x01 - blink;
-            break;
-        case 8:
-            light_1[2] = other_leds;
-            light_2[2] = other_leds;
-            light_3[2] = other_leds;
-            light_4[2] = 0x02 - blink;
-            break;
-        }
-
-        // Let's write it to the private ports
-        if (
-            IAMForceStatus.battery_status != battery_status || IAMForceStatus.battery_capacity != capacity)
-        {
-            // Update lights
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_2, sizeof(light_2));
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_3, sizeof(light_3));
-            orig_snd_rawmidi_write(rawvirt_outpriv, light_4, sizeof(light_4));
-
-            // Store current status
-            IAMForceStatus.battery_status = battery_status;
-            IAMForceStatus.battery_capacity = capacity;
+            battery_status = BATTERY_UNKNOWN;
+            other_leds = 0x01;
         }
     }
+
+    // If battery is currently charging, we make the last light blink
+    // by decreasing the scale by 1
+    if (battery_status == BATTERY_CHARGING && !IAMForceStatus.tap_status && scale > 0)
+        blink = 1;
+    else
+        blink = 0;
+    // LOG_DEBUG("Battery status: %d - Tap status: %d - Scale: %d => blink=%d", battery_status, IAMForceStatus.tap_status, scale, blink);
+
+    // Reset lights
+    uint8_t light_1[] = {0xB0, 0x5A, 0x00};
+    uint8_t light_2[] = {0xB0, 0x5B, 0x00};
+    uint8_t light_3[] = {0xB0, 0x5C, 0x00};
+    uint8_t light_4[] = {0xB0, 0x5D, 0x00};
+
+    // Handle 'current' light
+    switch (scale)
+    {
+    case 0:
+        break;
+    case 1:
+        light_1[2] = 0x01 - blink;
+        break;
+    case 2:
+        light_1[2] = 0x02 - blink;
+        break;
+    case 3:
+        light_1[2] = other_leds;
+        light_2[2] = 0x01 - blink;
+        break;
+    case 4:
+        light_1[2] = other_leds;
+        light_2[2] = 0x02 - blink;
+        break;
+    case 5:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = 0x01 - blink;
+        break;
+    case 6:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = 0x02 - blink;
+        break;
+    case 7:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = other_leds;
+        light_4[2] = 0x01 - blink;
+        break;
+    case 8:
+        light_1[2] = other_leds;
+        light_2[2] = other_leds;
+        light_3[2] = other_leds;
+        light_4[2] = 0x02 - blink;
+        break;
+    }
+
+    // Update lights
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_1, sizeof(light_1));
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_2, sizeof(light_2));
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_3, sizeof(light_3));
+    orig_snd_rawmidi_write(rawvirt_outpriv, light_4, sizeof(light_4));
+
+    // Store current status
+    IAMForceStatus.battery_status = battery_status;
+    IAMForceStatus.battery_capacity = capacity;
 
     // Handle counter, increment buffer
     IAMForceStatus.tap_counter++;
@@ -396,7 +407,7 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             }
             else
             {
-                setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
+                setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
                 FakeMidiMessage(midi_buffer, buffer_size);
             }
             break;
@@ -409,7 +420,7 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             }
             else
             {
-                setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
+                setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
                 FakeMidiMessage(midi_buffer, buffer_size);
             }
             break;
@@ -422,7 +433,7 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             }
             else
             {
-                setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
+                setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
                 FakeMidiMessage(midi_buffer, buffer_size);
             }
             break;
@@ -430,11 +441,11 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
         case LIVEII_BT_NOTE_REPEAT:
             if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
             {
+                setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
                 FakeMidiMessage(midi_buffer, buffer_size);
             }
             else
             {
-                setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
                 midi_buffer[1] = FORCE_BT_SELECT;
             }
             break;
@@ -512,15 +523,24 @@ inline void cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceTy
         break;
     case FORCE_BT_LAUNCH:
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
+        {
             midi_buffer[2] = LIVEII_BT_FULL_LEVEL;
+            IAMForceStatus.force_mode = MPC_FORCE_MODE_LAUNCH;
+        }
         break;
     case FORCE_BT_STEP_SEQ:
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
+        {
             midi_buffer[2] = LIVEII_BT_16_LEVEL;
+            IAMForceStatus.force_mode = MPC_FORCE_MODE_STEPSEQ;
+        }
         break;
     case FORCE_BT_NOTE:
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
+        {
             midi_buffer[2] = LIVEII_BT_ERASE;
+            IAMForceStatus.force_mode = MPC_FORCE_MODE_NOTE;
+        }
         break;
     }
 }
