@@ -199,7 +199,6 @@ void cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t source
                     pad_number = pad_number - 12;
                 midi_buffer[3] = pad_number;
             }
-            
         }
         // FORCE PAD =======> MPC BUTTON
         else
@@ -384,6 +383,7 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
     // Handle PRESS
     if (midi_buffer[2] == 0x7f)
     {
+        LOG_DEBUG("It's a button down");
         switch (note_number)
         {
         case LIVEII_BT_BANK_A:
@@ -491,9 +491,44 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
         }
     }
 
-    // Handle RELEASE
+    // Handle RELEASE. Either it's a click and we confirm switch,
+    // either it was momentary and we don't;
     else
     {
+        LOG_DEBUG("It's a button up");
+        switch (note_number)
+        {
+        case LIVEII_BT_BANK_A:
+        case LIVEII_BT_BANK_B:
+        case LIVEII_BT_BANK_C:
+        case LIVEII_BT_BANK_D:
+            // If it's NOT a click, we restore previous mode
+            if (!IAMForceStatus.is_click)
+            {
+                LOG_DEBUG("Not a click, we restore mode %02x", IAMForceStatus.pad_layout);
+                setLayout(IAMForceStatus.permanent_pad_layout, true);
+            }
+            // If it's a click, we save the new mode
+            else
+            {
+                LOG_DEBUG("It's a click, we confirm mode %02x", IAMForceStatus.pad_layout);
+                setLayout(IAMForceStatus.pad_layout, true);
+            }
+            break;
+
+        case LIVEII_BT_NOTE_REPEAT:
+            midi_buffer[1] = FORCE_BT_SELECT;
+            break;
+        case LIVEII_BT_FULL_LEVEL:
+            midi_buffer[1] = FORCE_BT_EDIT;
+            break;
+        case LIVEII_BT_16_LEVEL:
+            midi_buffer[1] = FORCE_BT_COPY;
+            break;
+        case LIVEII_BT_ERASE:
+            midi_buffer[1] = FORCE_BT_DELETE;
+            break;
+        }
     }
 
     // Ok we're done here
@@ -550,98 +585,98 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
 {
     LOG_DEBUG("Entering mode_e callback");
 
-    // Read mode: what's pressed is what matters
+    // Read mode: what's pressed is what matters. We switch in temporary mode.
     if (force_target != NULL)
     {
         // Do a pad by pad mapping
-        switch(note_number)
+        switch (note_number)
         {
-            // 1st line
-            case LIVEII_PAD_TL0:
-                setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-                break;
-            case LIVEII_PAD_TL1:
-                setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-                break;
-            case LIVEII_PAD_TL2:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_LAUNCH;
-                break;
-            case LIVEII_PAD_TL3:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_LAUNCH;
-                break;
+        // 1st line
+        case LIVEII_PAD_TL0:
+            setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
+            FakeMidiMessage(midi_buffer, buffer_size);
+            break;
+        case LIVEII_PAD_TL1:
+            setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
+            FakeMidiMessage(midi_buffer, buffer_size);
+            break;
+        case LIVEII_PAD_TL2:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
+            break;
+        case LIVEII_PAD_TL3:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
+            break;
 
-            // 2d line
-            case LIVEII_PAD_TL4:
-                setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-                break;
-            case LIVEII_PAD_TL5:
-                setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-                break;
-            case LIVEII_PAD_TL6:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_LAUNCH;
-                break;
-            case LIVEII_PAD_TL7:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_LAUNCH;
-                break;
-            
-            // 3rd line
-            case LIVEII_PAD_TL8:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_STEP_SEQ;
-                break;
-            case LIVEII_PAD_TL9:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_STEP_SEQ;
-                break;
-            case LIVEII_PAD_TL10:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_NOTE;
-                break;
-            case LIVEII_PAD_TL11:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_NOTE;
-                break;
+        // 2d line
+        case LIVEII_PAD_TL4:
+            setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
+            FakeMidiMessage(midi_buffer, buffer_size);
+            break;
+        case LIVEII_PAD_TL5:
+            setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
+            FakeMidiMessage(midi_buffer, buffer_size);
+            break;
+        case LIVEII_PAD_TL6:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
+            break;
+        case LIVEII_PAD_TL7:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
+            break;
 
-            case LIVEII_PAD_TL12:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_STEP_SEQ;
-                break;
-            case LIVEII_PAD_TL13:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_STEP_SEQ;
-                break;
-            case LIVEII_PAD_TL14:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_NOTE;
-                break;
-            case LIVEII_PAD_TL15:
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-                midi_buffer[0] = 0x90;
-                midi_buffer[1] = FORCE_BT_NOTE;
-                break;
+        // 3rd line
+        case LIVEII_PAD_TL8:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_STEP_SEQ;
+            break;
+        case LIVEII_PAD_TL9:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_STEP_SEQ;
+            break;
+        case LIVEII_PAD_TL10:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_NOTE;
+            break;
+        case LIVEII_PAD_TL11:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_NOTE;
+            break;
 
-            default:
-                LOG_ERROR("cb_mode_e: unknown note number %d", note_number);
-                FakeMidiMessage(midi_buffer, buffer_size);
+        case LIVEII_PAD_TL12:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_STEP_SEQ;
+            break;
+        case LIVEII_PAD_TL13:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_STEP_SEQ;
+            break;
+        case LIVEII_PAD_TL14:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_NOTE;
+            break;
+        case LIVEII_PAD_TL15:
+            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
+            midi_buffer[0] = 0x90;
+            midi_buffer[1] = FORCE_BT_NOTE;
+            break;
+
+        default:
+            LOG_ERROR("cb_mode_e: unknown note number %d", note_number);
+            FakeMidiMessage(midi_buffer, buffer_size);
         }
     }
     else
@@ -667,7 +702,7 @@ size_t cb_xfader(const MPCControlToForce_t *force_target, const ForceControlToMP
     // Write mode (if the fader is moved): we convert the fader value to a pad shade
     if (mpc_target != NULL)
     {
-        uint8_t fader_value = 127;      // XXX hard-coded for now
+        uint8_t fader_value = 127; // XXX hard-coded for now
 
         // We have 16 pads. We split fader_value so that:
         // The 8 lower pads represent the values that goes from 0 to 127.

@@ -36,7 +36,6 @@ IAMForceStatus_t IAMForceStatus = {
     .started_button_down = {0, 0},
     .project_loaded = false,
 };
-IAMForceStatus_t IAMForceRestStatus;
 
 // Default length of messages
 uint_fast8_t SOURCE_MESSAGE_LENGTH[8] = {
@@ -847,9 +846,35 @@ void initProject()
 }
 
 // NOTA: this is not thread safe!
-void StoreButtonDown(uint8_t mpc_button_number)
+void StoreButtonPress(uint8_t mpc_button_number, bool key_down)
 {
-    
+    struct timespec now;
+    uint64_t down_duration;
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+    IAMForceStatus.is_click = false;
+    IAMForceStatus.is_double_click = false;
+    if (IAMForceStatus.last_button_down == mpc_button_number)
+    {
+        down_duration = (now.tv_sec - IAMForceStatus.started_button_down.tv_sec) * 1000 + (now.tv_nsec - IAMForceStatus.started_button_down.tv_nsec) / 1000000;
+        if (key_down)
+        {
+            if (down_duration < DOUBLE_CLICK_DELAY)
+            {
+                IAMForceStatus.is_double_click = true;
+                IAMForceStatus.started_button_down.tv_sec = 0; // Avoid mixing double clicks and click at release
+            }
+        }
+        else
+        {
+            if (down_duration < HOLD_DELAY)
+            {
+                LOG_DEBUG("It's a click!!!");
+                IAMForceStatus.is_click = true;
+            }
+        }
+    }
+
     IAMForceStatus.last_button_down = mpc_button_number;
     clock_gettime(CLOCK_MONOTONIC_RAW, &IAMForceStatus.started_button_down);
 }
@@ -906,7 +931,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             // Apply mapping, call the callback function
             source_type = midi_buffer[i + 2] == 0x7f ? source_button_on : source_button_off;
             note_number = midi_buffer[i + 1];
-            StoreButtonDown(note_number);
+            StoreButtonPress(note_number, midi_buffer[i + 2] == 0x7f ? true : false);
             mpc_to_force_mapping_p = &MPCButtonToForce[note_number];
             LOG_DEBUG("Button %02x %02x => %p (CB=%p)", note_number, midi_buffer[i + 2], mpc_to_force_mapping_p, mpc_to_force_mapping_p->callback);
             if (mpc_to_force_mapping_p->callback != NULL)
@@ -927,7 +952,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
         case 0xA9:
             note_number = midi_buffer[i + 1];
             pad_number = getMPCPadNumber(note_number);
-            StoreButtonDown(note_number);
+            StoreButtonPress(note_number, midi_buffer[i] == 0x99 ? true : false);
             if (midi_buffer[i] == 0x99)
                 source_type = source_pad_note_on;
             else if (midi_buffer[i] == 0x89)
