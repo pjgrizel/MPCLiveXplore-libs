@@ -181,10 +181,9 @@ size_t cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t sour
                 false);
 
             // Transpose MPC pad number or discard message
-            LOG_DEBUG("PAD SYSEX message from Force pad %02x to MPC pad %02x", note_number, pad_number);
             if (pad_number == 0xFF)
             {
-                LOG_DEBUG("    WARNING: Discarded");
+                // LOG_DEBUG("    WARNING: Discarded");
                 return 0;
                 // The FakeMidiMessage here doesn't actually work
                 // FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
@@ -199,6 +198,7 @@ size_t cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t sour
                     pad_number = pad_number - 4;
                 else
                     pad_number = pad_number - 12;
+                LOG_DEBUG("PAD SYSEX message from Force note %02x to MPC pad %02x", note_number, pad_number);
                 midi_buffer[3] = pad_number;
             }
         }
@@ -291,6 +291,7 @@ size_t cb_tap_tempo(const MPCControlToForce_t *force_target, const ForceControlT
         if (strcmp(buffer, "Charging\n") == 0)
         {
             battery_status = BATTERY_CHARGING;
+            scale += 1;
             other_leds = 0x01;
         }
         else if (strcmp(buffer, "Full\n") == 0)

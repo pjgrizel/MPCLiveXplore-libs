@@ -181,14 +181,14 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x06].color = COLOR_RED,
         [0x07].note_number = FORCE_BT_RIGHT,
         [0x07].color = COLOR_GREY,
-        [0x08].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD1, // XXX which channel is it?
-        [0x09].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD2,
-        [0x0a].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD3,
-        [0x0b].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD4,
-        [0x0c].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD5,
-        [0x0d].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD6,
-        [0x0e].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD7,
-        [0x0f].note_number = FORCE_PAD_FLAG + FORCE_BT_MUTE_PAD8},
+        [0x08].note_number = FORCE_BT_MUTE_PAD1,
+        [0x09].note_number = FORCE_BT_MUTE_PAD2,
+        [0x0a].note_number = FORCE_BT_MUTE_PAD3,
+        [0x0b].note_number = FORCE_BT_MUTE_PAD4,
+        [0x0c].note_number = FORCE_BT_MUTE_PAD5,
+        [0x0d].note_number = FORCE_BT_MUTE_PAD6,
+        [0x0e].note_number = FORCE_BT_MUTE_PAD7,
+        [0x0f].note_number = FORCE_BT_MUTE_PAD8},
     // IAMFORCE_LAYOUT_PAD_COLS
     {
         [0x00].note_number = FORCE_BT_UNSET,
@@ -203,14 +203,14 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x06].note_number = FORCE_BT_UNSET,
         [0x07].note_number = FORCE_BT_RIGHT,
         [0x07].color = COLOR_GREY,
-        [0x08].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD1, // XXX Which channel is it?
-        [0x09].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD2,
-        [0x0a].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD3,
-        [0x0b].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD4,
-        [0x0c].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD5,
-        [0x0d].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD6,
-        [0x0e].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD7,
-        [0x0f].note_number = FORCE_PAD_FLAG + FORCE_BT_COLUMN_PAD8},
+        [0x08].note_number = FORCE_BT_COLUMN_PAD1,
+        [0x09].note_number = FORCE_BT_COLUMN_PAD2,
+        [0x0a].note_number = FORCE_BT_COLUMN_PAD3,
+        [0x0b].note_number = FORCE_BT_COLUMN_PAD4,
+        [0x0c].note_number = FORCE_BT_COLUMN_PAD5,
+        [0x0d].note_number = FORCE_BT_COLUMN_PAD6,
+        [0x0e].note_number = FORCE_BT_COLUMN_PAD7,
+        [0x0f].note_number = FORCE_BT_COLUMN_PAD8},
     // SCENE MODE
     {
         // 1st line
@@ -649,6 +649,7 @@ void LoadMapping()
 ///////////////////////////////////////////////////////////////////////////////
 // Prepare a fake midi message in the Private midi context
 ///////////////////////////////////////////////////////////////////////////////
+// XXX COMPLETELY REMOVE THIS FUNCTION TO DISCARD MESSAGE FROM THE OUTPUT
 size_t FakeMidiMessage(uint8_t buf[], size_t size)
 {
     // LOG_DEBUG("FakeMidiMessage(buf=%p, size=%d)
@@ -674,7 +675,7 @@ inline void setPadColor(const uint8_t pad_number, const uint8_t r, const uint8_t
     int p = 0;
 
     // Log event
-    LOG_DEBUG("               Set pad color: %02X r g b %02X %02X %02X", pad_number, r, g, b);
+    // LOG_DEBUG("               Set pad color: %02X r g b %02X %02X %02X", pad_number, r, g, b);
 
     // Double-check input data
     if (pad_number > 16)
@@ -782,18 +783,17 @@ uint8_t getMPCPadNumber(uint8_t note_number)
     }
 }
 
-// This is the reverse of getMPCPadNumber
+// We convert a pad number (from the sysex) to a note number suitable for our mapping table
 uint8_t getForcePadNoteNumber(uint8_t pad_number, bool add_extra_bit)
 {
-    LOG_DEBUG("Looking for pad number=%02x" , pad_number);
-    if (pad_number < 64)
+    if (pad_number < 0x40) // 0x40 = 64, the core 'note' rows
         return pad_number + FORCEPADS_TABLE_IDX_OFFSET + (add_extra_bit ? 0x80 : 0);
-    return FORCE_BT_COLUMN_PAD1 + (add_extra_bit ? 0x80 : 0);
-    // if (pad_number <= 72)
-    //     return FORCE_BT_COLUMN_PAD1 + (add_extra_bit ? 0x80 : 0);
-    // if (pad_number <= 80)
-    //     return FORCE_BT_MUTE_PAD1 + (add_extra_bit ? 0x80 : 0);
-    LOG_ERROR("Pad number %02x can't be converted to note number", pad_number);
+    else if (pad_number < 0x48)
+        return FORCE_BT_MUTE_PAD1 + (pad_number - 0x40);
+    else if (pad_number < 0x50)
+        return FORCE_BT_COLUMN_PAD1 + (pad_number - 0x48);
+    else
+        LOG_ERROR("Pad number %02x can't be converted to note number", pad_number);
     exit(-1);
 }
 
@@ -938,6 +938,20 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 
         // BUTTONS -----------------------------------------------------------------
         case 0x90:
+            // DEBUG MODE: DUMP THE WHOLE MAPPING when pressing the "+" button
+            // if (midi_buffer[i + 1] == LIVEII_BT_PLUS && midi_buffer[i + 2] == 0x7F)
+            // {
+            //     LOG_DEBUG("Dumping mapping");
+            //     for (int i = 0; i < IAMFORCE_LAYOUT_N; i++)
+            //     {
+            //         char mapping_string[256];
+
+            //         // Put in mapping_string
+            //         mpc_to_force_mapping_p = &MPCButtonToForce[i];
+            //         LOG_DEBUG("Button %02x => %p (CB=%p)", i, mpc_to_force_mapping_p, mpc_to_force_mapping_p->callback);
+            //     }
+            // }
+
             // Apply mapping, call the callback function
             source_type = midi_buffer[i + 2] == 0x7f ? source_button_on : source_button_off;
             note_number = midi_buffer[i + 1];
@@ -1049,25 +1063,26 @@ size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 // XXX TODO: triple-check against buffer overflow!
                 // It's a pad, so we set the last bit to 1
                 source_type = source_pad_sysex;
-                LOG_DEBUG("Entering pad write (Force->MPC) for pad %02X", midi_buffer[i + 3]);
                 note_number = getForcePadNoteNumber(midi_buffer[i + 3], true);
+                LOG_DEBUG("Entering pad write (Force->MPC) for pad %02X, mapping force-MPC note is %02x", midi_buffer[i + 3], note_number);
 
                 // XXX TODO: init project
                 // (that is, project was not init and note color != 0)
 
                 // Call the callback
                 force_to_mpc_mapping_p = &ForceControlToMPC[note_number];
+                callback_i = 0;
                 while (force_to_mpc_mapping_p != NULL)
                 {
                     if (force_to_mpc_mapping_p->callback == NULL)
                     {
                         LOG_DEBUG("NULL callback for Force note %02X, we swallow MIDI message", note_number);
+                        force_to_mpc_mapping_p = NULL;
                         callback_i = 0;
-                        i++;        // Avoid infinite loops
                     }
                     else
                     {
-                        LOG_DEBUG("Calling callback for PAD %02X change (note number=%02X)", midi_buffer[i + 3], note_number);
+                        // LOG_DEBUG("Calling callback for PAD %02X change (note number=%02X)", midi_buffer[i + 3], note_number);
                         callback_i = force_to_mpc_mapping_p->callback(
                             NULL,
                             force_to_mpc_mapping_p,
@@ -1076,33 +1091,31 @@ size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                             &midi_buffer[i],
                             size - i);
                         force_to_mpc_mapping_p = force_to_mpc_mapping_p->next_control;
-                        LOG_DEBUG(".....callback return len=%d", callback_i);
+                        // LOG_DEBUG(".....callback return len=%d", callback_i);
                     }
+                }
+                if (callback_i > 0)
+                    i += callback_i; // Only advance once even if we called several callbacks
 
-                    // Swallow useless messages
-                    if (callback_i > 0)
-                        i += callback_i; // Only advance once even if we called several callbacks
-                    else
-                    {
-                        // We erase the message if we have no callback
-                        // i -= (sizeof(MPCSysexPadColorFn) + sizeof(AkaiSysex) + 1);
-                        // XXX Make this overwrite proof
-                        while (midi_buffer[i] != 0xF7)
-                            i++;
+                // Swallow useless messages
+                else
+                {
+                    // We erase the message if we have no callback
+                    // i -= (sizeof(MPCSysexPadColorFn) + sizeof(AkaiSysex) + 1);
+                    while (midi_buffer[i] != 0xF7 && i < (size - 1))
                         i++;
-                        LOG_DEBUG("...erase MIDI message from %d to %d (new len=%d)", erase_start, i, size - (i - erase_start));
-                        memcpy(&midi_buffer[erase_start], &midi_buffer[i], size - i);
-                        size = size - (i - erase_start);
-                        i = erase_start;
-                        LOG_DEBUG("....new buffer...");
-                        ShowBufferHexDump(midi_buffer, size, 0x00);
-                    }
+                    LOG_DEBUG("  (...erase MIDI message from %d to %d (new len=%d))", erase_start, i, size - (i - erase_start));
+                    memcpy(&midi_buffer[erase_start], &midi_buffer[i], size - i);
+                    size = size - (i - erase_start);
+                    i = erase_start;
+                    // LOG_DEBUG("....new buffer...");
+                    // ShowBufferHexDump(midi_buffer, size, 0x00);
                 }
             }
             else if (midi_buffer[i] == 0x0B)
             {
                 // We erase the message if we have no callback
-                LOG_DEBUG("Discard 0B message");
+                LOG_DEBUG("(Discard 0B message, it's probably the OLED screens)");
                 while (midi_buffer[i] != 0xF7)
                     i++;
                 i++;
