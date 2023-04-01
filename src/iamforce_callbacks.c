@@ -467,25 +467,25 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             {
                 switch (IAMForceStatus.permanent_pad_layout)
                 {
-                    // Permanent mode is BANK A-D
-                    case IAMFORCE_LAYOUT_PAD_BANK_A:
-                        // Lock/Unlock mode buttons
-                        IAMForceStatus.mode_buttons = MODE_BUTTONS_TOP_LOCK | MODE_BUTTONS_BOTTOM_LOCK;
-                        setLayout(IAMFORCE_LAYOUT_PAD_MODE, true);
-                        break;
-                    case IAMFORCE_LAYOUT_PAD_BANK_B:
-                    case IAMFORCE_LAYOUT_PAD_BANK_C:
-                    case IAMFORCE_LAYOUT_PAD_BANK_D:
-                        // Simple Bank A click
-                        setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
-                        break;
-                        
-                    // Permanent mode is MODE-xxx: we unlock mode buttons and return to bank A
-                    default:
-                        IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_LOCK;
-                        IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_BOTTOM_LOCK;
-                        setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
-                        break;
+                // Permanent mode is BANK A-D
+                case IAMFORCE_LAYOUT_PAD_BANK_A:
+                    // Lock/Unlock mode buttons
+                    IAMForceStatus.mode_buttons = MODE_BUTTONS_TOP_LOCK | MODE_BUTTONS_BOTTOM_LOCK;
+                    setLayout(IAMFORCE_LAYOUT_PAD_MODE, true);
+                    break;
+                case IAMFORCE_LAYOUT_PAD_BANK_B:
+                case IAMFORCE_LAYOUT_PAD_BANK_C:
+                case IAMFORCE_LAYOUT_PAD_BANK_D:
+                    // Simple Bank A click
+                    setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
+                    break;
+
+                // Permanent mode is MODE-xxx: we unlock mode buttons and return to bank A
+                default:
+                    IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_LOCK;
+                    IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_BOTTOM_LOCK;
+                    setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
+                    break;
                 }
             }
             else
@@ -550,45 +550,38 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
 }
 
 // The write function just handles proper color display in each mode
-inline void cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
+void cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
+    LOG_DEBUG("Enter MODE button write for note %02x / Value %02x", note_number, midi_buffer[2]);
     switch (note_number)
     {
+        // We ignore those buttons feedbacks
+        // XXX we should implement them someday
     case FORCE_BT_SELECT:
-        if (IAMForceStatus.mode_buttons & !MODE_BUTTONS_BOTTOM_MODE)
-            midi_buffer[2] = LIVEII_BT_NOTE_REPEAT;
-        break;
     case FORCE_BT_EDIT:
-        if (IAMForceStatus.mode_buttons & !MODE_BUTTONS_BOTTOM_MODE)
-            midi_buffer[2] = LIVEII_BT_FULL_LEVEL;
-        break;
     case FORCE_BT_COPY:
-        if (IAMForceStatus.mode_buttons & !MODE_BUTTONS_BOTTOM_MODE)
-            midi_buffer[2] = LIVEII_BT_16_LEVEL;
-        break;
     case FORCE_BT_DELETE:
-        if (IAMForceStatus.mode_buttons & !MODE_BUTTONS_BOTTOM_MODE)
-            midi_buffer[2] = LIVEII_BT_ERASE;
+        FakeMidiMessage(midi_buffer, 3);
         break;
-    case FORCE_BT_LAUNCH:
+    case FORCE_BT_NOTE:
+        IAMForceStatus.force_mode = MPC_FORCE_MODE_NOTE;
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
         {
             midi_buffer[2] = LIVEII_BT_FULL_LEVEL;
-            IAMForceStatus.force_mode = MPC_FORCE_MODE_LAUNCH;
         }
         break;
     case FORCE_BT_STEP_SEQ:
+        IAMForceStatus.force_mode = MPC_FORCE_MODE_STEPSEQ;
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
         {
             midi_buffer[2] = LIVEII_BT_16_LEVEL;
-            IAMForceStatus.force_mode = MPC_FORCE_MODE_STEPSEQ;
         }
         break;
-    case FORCE_BT_NOTE:
+    case FORCE_BT_LAUNCH:
+        IAMForceStatus.force_mode = MPC_FORCE_MODE_LAUNCH;
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
         {
             midi_buffer[2] = LIVEII_BT_ERASE;
-            IAMForceStatus.force_mode = MPC_FORCE_MODE_NOTE;
         }
         break;
     }
@@ -597,7 +590,7 @@ inline void cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceTy
 // Aaaaah, THE big callback! This is where a lot of funny stuff happens!
 size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
-    LOG_DEBUG("Entering mode_e callback");
+    LOG_DEBUG("Entering mode_e callback with note number %02x", note_number);
 
     // Read mode: what's pressed is what matters. We switch in temporary mode.
     if (force_target != NULL)
@@ -749,7 +742,7 @@ size_t cb_shift(const MPCControlToForce_t *force_target, const ForceControlToMPC
 
 size_t cb_edit_button(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
-    LOG_DEBUG("Entering edit_button callback");
+    LOG_DEBUG("Entering edit_button callback for Force note %02x", note_number);
     if (force_target != NULL)
         cb_edit_button_read(force_target, source_type, note_number, midi_buffer, buffer_size);
     else if (mpc_target != NULL)

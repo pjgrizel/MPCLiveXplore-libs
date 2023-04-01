@@ -56,6 +56,7 @@ uint_fast8_t SOURCE_MESSAGE_LENGTH[8] = {
 static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
     // Pad bank A
     {
+        [0 ... 15].note_number = 0xff,
         // 0x01st line
         [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 0,
         [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 1,
@@ -78,6 +79,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 27},
     // Pad bank B
     {
+        [0 ... 15].note_number = 0xff,
         // 0x01st line
         [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 4,
         [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 5,
@@ -100,6 +102,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 31},
     // Pad bank C
     {
+        [0 ... 15].note_number = 0xff,
         // First line (the top line)
         [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 32,
         [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 33,
@@ -122,6 +125,8 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 59},
     // Pad bank D
     {
+        [0 ... 15].note_number = 0xff,
+        // 1st line
         [0x00].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 36,
         [0x01].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 37,
         [0x02].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 38,
@@ -142,7 +147,10 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0e].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 62,
         [0x0f].note_number = FORCE_PAD_FLAG + FORCEPADS_TABLE_IDX_OFFSET + 63},
     // PAD LAYOUT MODE, this is 100% custom here (because of the reverse relationship)
+    // Note that we could somehow link the Force button numbers to their controls,
+    // but not sure it's even needed.
     {
+        [0 ... 15].note_number = 0xff,
         // 1st line
         [0x00].callback = cb_mode_e,
         [0x01].callback = cb_mode_e,
@@ -165,6 +173,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0f].callback = cb_mode_e},
     // IAMFORCE_LAYOUT_PAD_MUTE
     {
+        [0 ... 15].note_number = 0xff,
         [0x00].note_number = FORCE_BT_MUTE,
         [0x00].color = COLOR_YELLOW,
         [0x01].note_number = FORCE_BT_SOLO,
@@ -191,6 +200,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0f].note_number = FORCE_BT_MUTE_PAD8},
     // IAMFORCE_LAYOUT_PAD_COLS
     {
+        [0 ... 15].note_number = 0xff,
         [0x00].note_number = FORCE_BT_UNSET,
         [0x01].note_number = FORCE_BT_UP,
         [0x01].color = COLOR_GREY,
@@ -213,6 +223,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0x0f].note_number = FORCE_BT_COLUMN_PAD8},
     // SCENE MODE
     {
+        [0 ... 15].note_number = 0xff,
         // 1st line
         [0x00].note_number = FORCE_BT_STOP_ALL,
         [0x01].note_number = FORCE_BT_UP,
@@ -236,6 +247,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
 
     // IAMFORCE_LAYOUT_PAD_XFDR
     {
+        [0 ... 15].note_number = 0xff,
         [0x00].callback = cb_xfader,
         [0x01].callback = cb_xfader,
         [0x02].callback = cb_xfader,
@@ -287,8 +299,11 @@ static MPCControlToForce_t MPCButtonToForce[128] = {
     [LIVEII_BT_BANK_D].callback = cb_edit_button,
     [LIVEII_BT_NOTE_REPEAT].callback = cb_edit_button,
     [LIVEII_BT_FULL_LEVEL].callback = cb_edit_button,
+    [LIVEII_BT_FULL_LEVEL].note_number = FORCE_BT_NOTE,
     [LIVEII_BT_16_LEVEL].callback = cb_edit_button,
+    [LIVEII_BT_16_LEVEL].note_number = FORCE_BT_STEP_SEQ,
     [LIVEII_BT_ERASE].callback = cb_edit_button,
+    [LIVEII_BT_ERASE].note_number = FORCE_BT_LAUNCH,
 
     // Upper right zone
     [LIVEII_BT_UNDO].note_number = FORCE_BT_UNDO,
@@ -312,13 +327,18 @@ static ForceControlToMPC_t ForceControlToMPC[CONTROL_TABLE_SIZE] = {
         .color = COLOR_BLACK,
         .callback = NULL,
         .next_control = NULL},
-    // XXX Should I update colors as well?
-    [FORCE_BT_LAUNCH].callback = cb_edit_button,
-    [FORCE_BT_STEP_SEQ].callback = cb_edit_button,
-    [FORCE_BT_NOTE].callback = cb_edit_button,
-    [FORCE_BT_MUTE].callback = cb_edit_button,
-    [FORCE_BT_REC_ARM].callback = cb_edit_button,
-    [FORCE_BT_CLIP_STOP].callback = cb_edit_button};
+    // // XXX Should I update colors as well?
+    // [FORCE_BT_NOTE].callback = cb_edit_button,
+    // [FORCE_BT_NOTE].note_number = LIVEII_BT_FULL_LEVEL,
+    // [FORCE_BT_STEP_SEQ].callback = cb_edit_button,
+    // [FORCE_BT_STEP_SEQ].note_number = LIVEII_BT_16_LEVEL,
+    // [FORCE_BT_LAUNCH].callback = cb_edit_button,
+    // [FORCE_BT_LAUNCH].note_number = LIVEII_BT_ERASE,
+};
+    // [FORCE_BT_MUTE].callback = cb_edit_button,
+    // [FORCE_BT_SOLO].callback
+    // [FORCE_BT_REC_ARM].callback = cb_edit_button,
+    // [FORCE_BT_CLIP_STOP].callback = cb_edit_button};
 
 static uint8_t ForceControlToMPCExtraNext = 0x80;                             // Next available index
 static uint8_t ForceControlToMPCExtraMax = 0x80 + FORCEPADS_TABLE_IDX_OFFSET; // Max index
@@ -376,11 +396,16 @@ void invertMPCToForceMapping()
             }
 
             // Save mapping
-            // XXX TODO: don't override default (already set) values
-            reverse_mapping_p->note_number = mpc_note_number;
-            reverse_mapping_p->bank = i;
-            reverse_mapping_p->callback = mapping_p->callback;
-            reverse_mapping_p->next_control = NULL;
+            if (reverse_mapping_p->callback == NULL)
+            {
+                // XXX TODO: don't override default (already set) values
+                reverse_mapping_p->note_number = mpc_note_number;
+                reverse_mapping_p->bank = i;
+                reverse_mapping_p->callback = mapping_p->callback;
+                reverse_mapping_p->next_control = NULL;
+            }
+            else
+                LOG_DEBUG("Don't override existing mapping for %02x.%02x", i, j);
         }
     }
 
@@ -408,12 +433,17 @@ void invertMPCToForceMapping()
         }
 
         // Save mapping
-        LOG_DEBUG("   => Mapping Force note %02X to callback %p", mapping_p->note_number, mapping_p->callback);
-        // XXX TODO: don't override default (already set) values
-        reverse_mapping_p->note_number = mpc_note_number;
-        reverse_mapping_p->bank = IAMFORCE_LAYOUT_NONE;
-        reverse_mapping_p->callback = mapping_p->callback;
-        reverse_mapping_p->next_control = NULL;
+        if (reverse_mapping_p->callback == NULL)
+        {
+            LOG_DEBUG("   => Mapping Force note %02X to callback %p", mapping_p->note_number, mapping_p->callback);
+            // XXX TODO: don't override default (already set) values
+            reverse_mapping_p->note_number = mpc_note_number;
+            reverse_mapping_p->bank = IAMFORCE_LAYOUT_NONE;
+            reverse_mapping_p->callback = mapping_p->callback;
+            reverse_mapping_p->next_control = NULL;
+        }
+        else
+            LOG_DEBUG("Don't override existing mapping for Force note number %02x", mapping_p->note_number);
     }
 }
 
@@ -507,10 +537,10 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     }
     if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
     {
-        button_colors[4] = BUTTON_COLOR_LIGHT_RED;      // Don't ask why...
+        button_colors[4] = BUTTON_COLOR_LIGHT_YELLOW; // Don't ask why...
         button_colors[5] = BUTTON_COLOR_LIGHT_YELLOW;
-        button_colors[6] = BUTTON_COLOR_LIGHT_RED;
-        button_colors[7] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[6] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[7] = BUTTON_COLOR_LIGHT_YELLOW;
     }
     else
     {
@@ -520,7 +550,7 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
         button_colors[7] = BUTTON_COLOR_OFF;
     }
 
-    // Set specific pad colors
+    // Set specific pad colors for the TOP row
     switch (pad_layout)
     {
     case IAMFORCE_LAYOUT_PAD_BANK_A:
@@ -549,6 +579,14 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
         break;
     }
 
+    // Same for the bottom row (it's a little bit more tricky here)
+    if (IAMForceStatus.force_mode == MPC_FORCE_MODE_NOTE)
+        button_colors[5] = BUTTON_COLOR_YELLOW;
+    if (IAMForceStatus.force_mode == MPC_FORCE_MODE_STEPSEQ)
+        button_colors[6] = BUTTON_COLOR_YELLOW;
+    if (IAMForceStatus.force_mode == MPC_FORCE_MODE_LAUNCH)
+        button_colors[7] = BUTTON_COLOR_YELLOW;
+
     // Commit colors
     // XXX TODO avoid changing all button colors everytime
     setButtonColor(LIVEII_BT_BANK_A, button_colors[0]);
@@ -568,6 +606,17 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
 
 inline void setButtonColor(uint8_t button, uint8_t color)
 {
+    // Tweak the color because if shitty, annoying, buggy, stupid, useless, crap colors
+    switch (button)
+    {
+    case LIVEII_BT_NOTE_REPEAT:
+    case LIVEII_BT_16_LEVEL:
+    case LIVEII_BT_ERASE:
+        if (color == BUTTON_COLOR_LIGHT_YELLOW)
+            color = BUTTON_COLOR_LIGHT_RED;
+    }
+
+    // Send the message
     uint8_t button_light[] = {0xB0, button, color};
     tklog_trace("additional dump snd_rawmidi_write");
     ShowBufferHexDump(button_light, sizeof(button_light), 0x00);
@@ -629,7 +678,28 @@ void LoadMapping()
     // Initialize global mapping tables
     invertMPCToForceMapping();
 
-    // Dump mapping (ForceControlToMPC)
+    // Dump MPC->Force mapping (MPCControlToForce)
+    for (int i = 0; i < IAMFORCE_LAYOUT_N; i++)
+    {
+        for (int j = 0; j < 16; j++)
+        {
+            LOG_DEBUG("MPCPadToForce[%02X.%02X] = %02X // %p",
+                      i,
+                      j,
+                      MPCPadToForce[i][j].note_number,
+                      MPCPadToForce[i][j].callback);
+        }
+    }
+    for (int i=0; i<(sizeof(MPCButtonToForce) / sizeof(MPCButtonToForce[0])) ; i++)
+    {
+        
+            LOG_DEBUG("MPCButtonToForce[%02X] = %02X // %p",
+                      i,
+                      MPCButtonToForce[i].note_number,
+                      MPCButtonToForce[i].callback);
+    }
+
+    // Dump Force->MPC mapping (ForceControlToMPC)
     for (int i = 0; i < CONTROL_TABLE_SIZE; i++)
     {
         LOG_DEBUG("ForceControlToMPC[%02X] = %02X.%02X // %p %p",
