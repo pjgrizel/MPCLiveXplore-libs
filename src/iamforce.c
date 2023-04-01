@@ -618,7 +618,7 @@ inline void setButtonColor(uint8_t button, uint8_t color)
 
     // Send the message
     uint8_t button_light[] = {0xB0, button, color};
-    tklog_trace("additional dump snd_rawmidi_write");
+    tklog_trace("additional dump snd_rawmidi_write\n");
     ShowBufferHexDump(button_light, sizeof(button_light), 0x00);
     orig_snd_rawmidi_write(rawvirt_outpriv, button_light, sizeof(button_light));
     return;
