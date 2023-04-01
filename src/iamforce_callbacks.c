@@ -388,59 +388,18 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
     // Handle PRESS
     if (midi_buffer[2] == 0x7f)
     {
-        LOG_DEBUG("It's a button down");
+        LOG_DEBUG("It's a button down; we temporarily show the INVERSE of the current layout");
         switch (note_number)
         {
         case LIVEII_BT_BANK_A:
-            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_TOP_MODE)
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
-            else
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_MODE, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
-            break;
-
         case LIVEII_BT_BANK_B:
-            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_TOP_MODE)
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
-            else
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
-            break;
-
         case LIVEII_BT_BANK_C:
-            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_TOP_MODE)
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
-            else
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
-            break;
-
         case LIVEII_BT_BANK_D:
             if (IAMForceStatus.mode_buttons & MODE_BUTTONS_TOP_MODE)
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
+                setLayout(IAMFORCE_LAYOUT_PAD_BANK_A + (note_number - LIVEII_BT_BANK_A), false);
             else
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
+                setLayout(IAMFORCE_LAYOUT_PAD_MODE + (note_number - LIVEII_BT_BANK_A), false);
+            FakeMidiMessage(midi_buffer, buffer_size);
             break;
 
         case LIVEII_BT_NOTE_REPEAT:
@@ -500,24 +459,47 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
     // either it was momentary and we don't;
     else
     {
-        LOG_DEBUG("It's a button up");
+        LOG_DEBUG("It's a button up for note %02x", note_number);
         switch (note_number)
         {
         case LIVEII_BT_BANK_A:
             if (IAMForceStatus.is_click)
             {
-                if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
-                    setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
+                switch (IAMForceStatus.permanent_pad_layout)
+                {
+                    // Permanent mode is BANK A-D
+                    case IAMFORCE_LAYOUT_PAD_BANK_A:
+                        // Lock/Unlock mode buttons
+                        IAMForceStatus.mode_buttons = MODE_BUTTONS_TOP_LOCK | MODE_BUTTONS_BOTTOM_LOCK;
+                        setLayout(IAMFORCE_LAYOUT_PAD_MODE, true);
+                        break;
+                    case IAMFORCE_LAYOUT_PAD_BANK_B:
+                    case IAMFORCE_LAYOUT_PAD_BANK_C:
+                    case IAMFORCE_LAYOUT_PAD_BANK_D:
+                        // Simple Bank A click
+                        setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
+                        break;
+                        
+                    // Permanent mode is MODE-xxx: we unlock mode buttons and return to bank A
+                    default:
+                        IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_LOCK;
+                        IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_BOTTOM_LOCK;
+                        setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
+                        break;
+                }
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);
             FakeMidiMessage(midi_buffer, 3);
             break;
+
         case LIVEII_BT_BANK_B:
             if (IAMForceStatus.is_click)
             {
                 if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
                     setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, true);
+                else
+                    setLayout(IAMFORCE_LAYOUT_PAD_MUTE, true);
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);
@@ -528,6 +510,8 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             {
                 if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
                     setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, true);
+                else
+                    setLayout(IAMFORCE_LAYOUT_PAD_COLS, true);
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);
@@ -538,6 +522,8 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             {
                 if (IAMForceStatus.permanent_pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
                     setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, true);
+                else
+                    setLayout(IAMFORCE_LAYOUT_PAD_SCENE, true);
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);

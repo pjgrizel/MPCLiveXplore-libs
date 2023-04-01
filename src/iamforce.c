@@ -428,16 +428,17 @@ void invertMPCToForceMapping()
 inline void setLayout(uint8_t pad_layout, bool permanent)
 {
     LOG_DEBUG("setLayout(%02x, %d)", pad_layout, permanent);
-    LOG_DEBUG("    current layout: %02x", IAMForceStatus.pad_layout);
-    LOG_DEBUG("    permanent layout: %02x", IAMForceStatus.permanent_pad_layout);
-    LOG_DEBUG("    mode buttons: %02x", IAMForceStatus.mode_buttons);
+    LOG_DEBUG("    [before] current layout: %02x", IAMForceStatus.pad_layout);
+    LOG_DEBUG("    [before] permanent layout: %02x", IAMForceStatus.permanent_pad_layout);
+    LOG_DEBUG("    [before] mode buttons: %02x", IAMForceStatus.mode_buttons);
 
     // Save button states
     uint8_t button_colors[8];
 
-    // Check if we are already in the right layout
-    if (IAMForceStatus.pad_layout == pad_layout)
-        return;
+    // // Check if we are already in the right layout
+    // XXX Carefuly re-implement this, taking 'permanent' state into account
+    // if (IAMForceStatus.project_loaded && IAMForceStatus.pad_layout == pad_layout)
+    //     return;
 
     // Set the new layout and button modes
     // XXX TODO: locking of banks
@@ -445,22 +446,21 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     IAMForceStatus.pad_layout = pad_layout;
     if (permanent)
         IAMForceStatus.permanent_pad_layout = pad_layout;
-    switch (pad_layout)
-    {
-    case IAMFORCE_LAYOUT_PAD_BANK_A:
-    case IAMFORCE_LAYOUT_PAD_BANK_B:
-    case IAMFORCE_LAYOUT_PAD_BANK_C:
-    case IAMFORCE_LAYOUT_PAD_BANK_D:
-        IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_MODE;
-        break;
-    case IAMFORCE_LAYOUT_PAD_MODE:
-    case IAMFORCE_LAYOUT_PAD_MUTE:
-    case IAMFORCE_LAYOUT_PAD_COLS:
-    case IAMFORCE_LAYOUT_PAD_SCENE:
-        IAMForceStatus.mode_buttons |= MODE_BUTTONS_TOP_MODE;
-        break;
-    }
-    LOG_DEBUG("    new mode buttons: %02x", IAMForceStatus.mode_buttons);
+    // switch (pad_layout)
+    // {
+    // case IAMFORCE_LAYOUT_PAD_BANK_A:
+    // case IAMFORCE_LAYOUT_PAD_BANK_B:
+    // case IAMFORCE_LAYOUT_PAD_BANK_C:
+    // case IAMFORCE_LAYOUT_PAD_BANK_D:
+    //     IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_MODE;
+    //     break;
+    // case IAMFORCE_LAYOUT_PAD_MODE:
+    // case IAMFORCE_LAYOUT_PAD_MUTE:
+    // case IAMFORCE_LAYOUT_PAD_COLS:
+    // case IAMFORCE_LAYOUT_PAD_SCENE:
+    //     IAMForceStatus.mode_buttons |= MODE_BUTTONS_TOP_MODE;
+    //     break;
+    // }
 
     if (pad_layout == IAMFORCE_LAYOUT_PAD_MODE)
     {
@@ -507,10 +507,10 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     }
     if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
     {
-        button_colors[4] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[4] = BUTTON_COLOR_LIGHT_RED;      // Don't ask why...
         button_colors[5] = BUTTON_COLOR_LIGHT_YELLOW;
-        button_colors[6] = BUTTON_COLOR_LIGHT_YELLOW;
-        button_colors[7] = BUTTON_COLOR_LIGHT_YELLOW;
+        button_colors[6] = BUTTON_COLOR_LIGHT_RED;
+        button_colors[7] = BUTTON_COLOR_LIGHT_RED;
     }
     else
     {
@@ -559,6 +559,9 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     setButtonColor(LIVEII_BT_FULL_LEVEL, button_colors[5]);
     setButtonColor(LIVEII_BT_16_LEVEL, button_colors[6]);
     setButtonColor(LIVEII_BT_ERASE, button_colors[7]);
+    LOG_DEBUG("    [ after] current layout: %02x", IAMForceStatus.pad_layout);
+    LOG_DEBUG("    [ after] permanent layout: %02x", IAMForceStatus.permanent_pad_layout);
+    LOG_DEBUG("    [ after] mode buttons: %02x", IAMForceStatus.mode_buttons);
 
     return;
 }
@@ -566,6 +569,8 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
 inline void setButtonColor(uint8_t button, uint8_t color)
 {
     uint8_t button_light[] = {0xB0, button, color};
+    tklog_trace("additional dump snd_rawmidi_write");
+    ShowBufferHexDump(button_light, sizeof(button_light), 0x00);
     orig_snd_rawmidi_write(rawvirt_outpriv, button_light, sizeof(button_light));
     return;
 }
