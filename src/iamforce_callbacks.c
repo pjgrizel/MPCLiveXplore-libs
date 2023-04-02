@@ -530,12 +530,12 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
                 uint8_t message[] = {0x90, FORCE_BT_EDIT, 0x00};
                 tklog_trace("additional dump snd_rawmidi_write\n");
                 ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_inpriv, message, sizeof(message));
+                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
                 message[1] = FORCE_BT_NOTE;
                 message[2] = 0x7f;
                 tklog_trace("additional dump snd_rawmidi_write\n");
                 ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_inpriv, message, sizeof(message));
+                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
                 midi_buffer[1] = FORCE_BT_NOTE;       // Just propagate the button, don't change mode/layout
             }
             else
@@ -549,12 +549,12 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
                 uint8_t message[] = {0x90, FORCE_BT_COPY, 0x00};
                 tklog_trace("additional dump snd_rawmidi_write\n");
                 ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_inpriv, message, sizeof(message));
+                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
                 message[1] = FORCE_BT_STEP_SEQ;
                 message[2] = 0x7f;
                 tklog_trace("additional dump snd_rawmidi_write\n");
                 ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_inpriv, message, sizeof(message));
+                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
                 midi_buffer[1] = FORCE_BT_STEP_SEQ;       // Just propagate the button, don't change mode/layout
             }
             else
@@ -568,12 +568,12 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
                 uint8_t message[] = {0x90, FORCE_BT_DELETE, 0x00};
                 tklog_trace("additional dump snd_rawmidi_write\n");
                 ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_inpriv, message, sizeof(message));
+                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
                 message[1] = FORCE_BT_LAUNCH;
                 message[2] = 0x7f;
                 tklog_trace("additional dump snd_rawmidi_write\n");
                 ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_inpriv, message, sizeof(message));
+                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
                 midi_buffer[1] = FORCE_BT_LAUNCH;       // Just propagate the button, don't change mode/layout
             }
             else
