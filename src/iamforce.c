@@ -175,7 +175,7 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
     {
         [0 ... 15].note_number = 0xff,
         [0x00].note_number = FORCE_BT_MUTE,
-        [0x00].color = 0x2f1900,        // ...the mute yellow!
+        [0x00].color = 0x2f1900, // ...the mute yellow!
         [0x01].note_number = FORCE_BT_SOLO,
         [0x01].color = 0x00007E,
         [0x02].note_number = FORCE_BT_REC_ARM,
@@ -467,6 +467,100 @@ void invertMPCToForceMapping()
  *                                                                        *
  **************************************************************************/
 
+void _setLayoutPadMode()
+{
+    // Special case with IAMFORCE_LAYOUT_PAD_MODE: we redraw all the pads manually
+    // XXX TODO: move this at init time
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0] = COLOR_ORANGE;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][1] = 0x2F1900;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][2] = 0x191919;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][3] = 0x191919;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][4] = 0x191919;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][5] = COLOR_CLOVER;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][6] = 0x330233;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][7] = 0x191919;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][8] = 0x7F1515;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][9] = 0x7F1515;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][10] = COLOR_GREEN;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][11] = 0x000600;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][12] = 0x504315;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][13] = 0x504315;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][14] = COLOR_GREEN;
+    MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][15] = 0x000600;
+
+    switch (IAMForceStatus.permanent_pad_layout)
+    {
+    case IAMFORCE_LAYOUT_PAD_XFDR:
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0] = 0x7F7F7F;
+        break;
+    case IAMFORCE_LAYOUT_PAD_MUTE:
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][1] = 0x7F7F7F;
+        break;
+    case IAMFORCE_LAYOUT_PAD_COLS:
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][4] = 0x7F7F7F;
+        break;
+    case IAMFORCE_LAYOUT_PAD_SCENE:
+        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][5] = 0x7F7F7F;
+        break;
+    case IAMFORCE_LAYOUT_PAD_BANK_A:
+        switch (IAMForceStatus.force_mode)
+        {
+        case MPC_FORCE_MODE_NOTE:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][2] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_STEPSEQ:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][8] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_LAUNCH:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0x0a] = 0x7F7F7F;
+            break;
+        }
+        break;
+    case IAMFORCE_LAYOUT_PAD_BANK_B:
+        switch (IAMForceStatus.force_mode)
+        {
+        case MPC_FORCE_MODE_NOTE:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][3] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_STEPSEQ:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][9] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_LAUNCH:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0x0b] = 0x7F7F7F;
+            break;
+        }
+        break;
+    case IAMFORCE_LAYOUT_PAD_BANK_C:
+        switch (IAMForceStatus.force_mode)
+        {
+        case MPC_FORCE_MODE_NOTE:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][6] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_STEPSEQ:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0x0c] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_LAUNCH:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0x0d] = 0x7F7F7F;
+            break;
+        }
+        break;
+    case IAMFORCE_LAYOUT_PAD_BANK_D:
+        switch (IAMForceStatus.force_mode)
+        {
+        case MPC_FORCE_MODE_NOTE:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][7] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_STEPSEQ:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0x0d] = 0x7F7F7F;
+            break;
+        case MPC_FORCE_MODE_LAUNCH:
+            MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0x0e] = 0x7F7F7F;
+            break;
+        }
+        break;
+    }
+}
+
 // Set layout, give status according to 'permanent' parameter
 // If false, we switch layout temporarily
 inline void setLayout(uint8_t pad_layout, bool permanent)
@@ -489,39 +583,29 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
 
     if (pad_layout == IAMFORCE_LAYOUT_PAD_MODE)
     {
-        // Special case with IAMFORCE_LAYOUT_PAD_MODE: we redraw all the pads manually
-        // XXX TODO: move this at init time
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][0] = COLOR_APRICOT;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][1] = COLOR_CLOVER;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][2] = COLOR_GREEN; // Make it darker
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][3] = COLOR_GREEN;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][4] = COLOR_INDIGO;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][5] = COLOR_VIOLET;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][6] = COLOR_GREEN; // Make it darker
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][7] = COLOR_GREEN;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][8] = COLOR_ORANGE;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][9] = COLOR_ORANGE;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][10] = COLOR_PINK;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][11] = COLOR_PINK;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][12] = COLOR_ORANGE;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][13] = COLOR_ORANGE;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][14] = COLOR_PINK;
-        MPCPadValues[IAMFORCE_LAYOUT_PAD_MODE][15] = COLOR_PINK;
+        _setLayoutPadMode();
     }
 
-    // Redraw the pads
-    for (uint8_t i = 0; i < 16; i++)
-    {
-        setPadColorFromColorInt(i, MPCPadValues[pad_layout][i]);
-    }
+    // Unlock if necessary (ie when we access bank A-D in lock mode)
+    if (pad_layout <= IAMFORCE_LAYOUT_PAD_BANK_D)
+        IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_LOCK;
 
-    // Set button colors
+    // Set pads and button colors
+    showLayout(pad_layout);
     setModeButtons();
 
     return;
 }
 
-
+// Show layout but without switching at all
+inline void showLayout(uint8_t pad_layout)
+{
+    // Redraw the pads
+    for (uint8_t i = 0; i < 16; i++)
+    {
+        setPadColorFromColorInt(i, MPCPadValues[pad_layout][i]);
+    }
+}
 
 // Set proper mode button colors according to the current layout
 inline void setModeButtons()
@@ -973,7 +1057,6 @@ void StoreButtonPress(uint8_t mpc_button_number, bool key_down)
     clock_gettime(CLOCK_MONOTONIC_RAW, &IAMForceStatus.started_button_down);
 }
 
-
 // With the midi_buffer, given the 'normal_advance' that should occur, either
 // move the pointer forward and return its position, or clean the buffer up to
 // 'normal_advance' but return its position after cleaning.
@@ -998,10 +1081,10 @@ size_t cleanBufferAndAdvance(uint8_t *midi_buffer, size_t buffer_size, size_t no
     // LOG_DEBUG("  (...erase MIDI message...)");
     size_t new_size = buffer_size - (normal_advance - callback_advance);
     // tklog_trace("    ....buffer before cleaning\n");
-    // ShowBufferHexDump(midi_buffer, buffer_size, 0x00); 
+    // ShowBufferHexDump(midi_buffer, buffer_size, 0x00);
     memmove(&midi_buffer[0], &midi_buffer[normal_advance - callback_advance], new_size);
     // tklog_trace("    ....buffer AFTER cleaning\n");
-    // ShowBufferHexDump(midi_buffer, new_size, 0x00);    
+    // ShowBufferHexDump(midi_buffer, new_size, 0x00);
     return callback_advance;
 }
 
@@ -1193,7 +1276,7 @@ size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
             //                      v----- We start our midi buffer HERE, our pad # will be at i + sizeof(MPCSysexPadColorFn)
             // FN  F0 47 7F [40] -> 65 00 04 [Pad #] [R] [G] [B] F7
             // Here, "pad #" is 0 for top-right pad, etc.
-            if (memcmp(&midi_buffer[i + 4], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn)) == 0 && (size-i >= 12))
+            if (memcmp(&midi_buffer[i + 4], MPCSysexPadColorFn, sizeof(MPCSysexPadColorFn)) == 0 && (size - i >= 12))
             {
                 // It's a pad, so we set the last bit to 1
                 source_type = source_pad_sysex;
@@ -1243,8 +1326,7 @@ size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 (midi_buffer[i + 4] == 0x67) ||
                 (midi_buffer[i + 4] == 0x68) ||
                 (midi_buffer[i + 4] == 0x69) ||
-                (midi_buffer[i + 4] == 0x6A)
-            )
+                (midi_buffer[i + 4] == 0x6A))
             {
                 // We erase the message if we have no callback
                 LOG_DEBUG("(Discard %02x message, it's probably the OLED screens)", midi_buffer[i + 4]);

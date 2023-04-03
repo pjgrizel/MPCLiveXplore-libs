@@ -492,7 +492,7 @@ size_t cb_edit_button_read(const MPCControlToForce_t *force_target, const Source
                 // Permanent mode is BANK A-D
                 case IAMFORCE_LAYOUT_PAD_BANK_A:
                     // Lock/Unlock mode buttons
-                    IAMForceStatus.mode_buttons = MODE_BUTTONS_TOP_LOCK;
+                    IAMForceStatus.mode_buttons |= MODE_BUTTONS_TOP_LOCK;
                     setLayout(IAMFORCE_LAYOUT_PAD_MODE, true);
                     break;
                 case IAMFORCE_LAYOUT_PAD_BANK_B:
@@ -505,7 +505,6 @@ size_t cb_edit_button_read(const MPCControlToForce_t *force_target, const Source
                 // Permanent mode is MODE-xxx: we unlock mode buttons and return to bank A
                 default:
                     IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_TOP_LOCK;
-                    IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_BOTTOM_LOCK;
                     setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, true);
                     break;
                 }
@@ -651,6 +650,8 @@ size_t cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t 
 // Aaaaah, THE big callback! This is where a lot of funny stuff happens!
 size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
+    uint8_t layout = IAMForceStatus.permanent_pad_layout;
+    size_t ret = 3;
     LOG_DEBUG("Entering mode_e callback with note number %02x", note_number);
 
     // Read mode: what's pressed is what matters. We switch in temporary mode.
@@ -661,85 +662,73 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
         {
         // 1st line
         case LIVEII_PAD_TL0:
-            setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
-            // FakeMidiMessage(midi_buffer, 3);
+            layout = IAMFORCE_LAYOUT_PAD_XFDR;
+            ret = 0;
             break;
         case LIVEII_PAD_TL1:
-            setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
-            // FakeMidiMessage(midi_buffer, 3);
+            layout = IAMFORCE_LAYOUT_PAD_MUTE;
+            ret = 0;
             break;
         case LIVEII_PAD_TL2:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_LAUNCH;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_A;
+            midi_buffer[1] = FORCE_BT_NOTE;
             break;
         case LIVEII_PAD_TL3:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_LAUNCH;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_B;
+            midi_buffer[1] = FORCE_BT_NOTE;
             break;
 
         // 2d line
         case LIVEII_PAD_TL4:
-            setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
-            // FakeMidiMessage(midi_buffer, 3);
+            layout = IAMFORCE_LAYOUT_PAD_COLS;
+            ret = 0;
             break;
         case LIVEII_PAD_TL5:
-            setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
+            layout = IAMFORCE_LAYOUT_PAD_SCENE;
             // FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL6:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_LAUNCH;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_C;
+            midi_buffer[1] = FORCE_BT_NOTE;
             break;
         case LIVEII_PAD_TL7:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_LAUNCH;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_D;
+            midi_buffer[1] = FORCE_BT_NOTE;
             break;
 
         // 3rd line
         case LIVEII_PAD_TL8:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
-            midi_buffer[0] = 0x90;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_A;
             midi_buffer[1] = FORCE_BT_STEP_SEQ;
             break;
         case LIVEII_PAD_TL9:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
-            midi_buffer[0] = 0x90;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_B;
             midi_buffer[1] = FORCE_BT_STEP_SEQ;
             break;
         case LIVEII_PAD_TL10:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_NOTE;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_A;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
             break;
         case LIVEII_PAD_TL11:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_B, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_NOTE;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_B;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
             break;
 
         case LIVEII_PAD_TL12:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-            midi_buffer[0] = 0x90;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_C;
             midi_buffer[1] = FORCE_BT_STEP_SEQ;
             break;
         case LIVEII_PAD_TL13:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_D, false);
-            midi_buffer[0] = 0x90;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_D;
             midi_buffer[1] = FORCE_BT_STEP_SEQ;
             break;
         case LIVEII_PAD_TL14:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_NOTE;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_C;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
             break;
         case LIVEII_PAD_TL15:
-            setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
-            midi_buffer[0] = 0x90;
-            midi_buffer[1] = FORCE_BT_NOTE;
+            layout = IAMFORCE_LAYOUT_PAD_BANK_C;
+            midi_buffer[1] = FORCE_BT_LAUNCH;
             break;
 
         default:
@@ -754,8 +743,15 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
         // FakeMidiMessage(midi_buffer, buffer_size);
     }
 
-    LOG_ERROR("Mode e callback returns %d", SOURCE_MESSAGE_LENGTH[source_type]);
-    return SOURCE_MESSAGE_LENGTH[source_type];
+    // Switch layout (or not)
+    midi_buffer[2] = midi_buffer[0] == 0x99 ? 0x7f : 0x00;
+    midi_buffer[0] = 0x90;
+    if (midi_buffer[2] == 0x00)
+        setLayout(layout, true);
+    else
+        showLayout(layout);
+    LOG_DEBUG("Mode e callback returns %d", ret);
+    return ret;
 }
 
 size_t cb_xfader(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
