@@ -606,7 +606,7 @@ size_t cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t 
         break;
     }
 
-    setLayout(IAMForceStatus.pad_layout, false);        // Fake update to make sure we are still up to date with the pads
+    // setLayout(IAMForceStatus.pad_layout, false);        // Fake update to make sure we are still up to date with the pads
     return 0;
 }
 
