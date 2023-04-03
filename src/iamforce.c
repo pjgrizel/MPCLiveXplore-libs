@@ -175,13 +175,13 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
     {
         [0 ... 15].note_number = 0xff,
         [0x00].note_number = FORCE_BT_MUTE,
-        [0x00].color = COLOR_YELLOW,
+        [0x00].color = 0x2f1900,        // ...the mute yellow!
         [0x01].note_number = FORCE_BT_SOLO,
-        [0x01].color = COLOR_BLUE,
+        [0x01].color = 0x00007E,
         [0x02].note_number = FORCE_BT_REC_ARM,
-        [0x02].color = COLOR_RED,
+        [0x02].color = 0x7E0000,
         [0x03].note_number = FORCE_BT_CLIP_STOP,
-        [0x03].color = COLOR_GREEN,
+        [0x03].color = 0x007E00,
         [0x04].note_number = FORCE_BT_LEFT,
         [0x04].color = COLOR_GREY,
         [0x05].note_number = FORCE_BT_ASSIGN_A,
@@ -290,6 +290,8 @@ static MPCControlToForce_t MPCButtonToForce[128] = {
     [LIVEII_BT_OVERDUB].note_number = FORCE_BT_ARP,
     [LIVEII_BT_STOP].note_number = FORCE_BT_STOP,
     [LIVEII_BT_PLAY].callback = cb_play,
+    [LIVEII_BT_PLAY].note_number = FORCE_BT_PLAY,
+    [LIVEII_BT_PLAY_START].callback = cb_play,
     [LIVEII_BT_PLAY_START].note_number = FORCE_BT_PLAY,
 
     // Edition buttons. These are double-function buttons so we use a callbacks here
@@ -401,6 +403,7 @@ void invertMPCToForceMapping()
                 // XXX TODO: don't override default (already set) values
                 reverse_mapping_p->note_number = mpc_note_number;
                 reverse_mapping_p->bank = i;
+                reverse_mapping_p->color = mapping_p->color;
                 reverse_mapping_p->callback = mapping_p->callback;
                 reverse_mapping_p->next_control = NULL;
             }
@@ -949,7 +952,7 @@ void StoreButtonPress(uint8_t mpc_button_number, bool key_down)
         {
             if (down_duration < HOLD_DELAY)
             {
-                LOG_DEBUG("It's a click!!!");
+                // LOG_DEBUG("It's a click!!!");
                 IAMForceStatus.is_click = true;
             }
         }
@@ -981,7 +984,7 @@ size_t cleanBufferAndAdvance(uint8_t *midi_buffer, size_t buffer_size, size_t no
         LOG_ERROR("  ERROR: callback_advance %d > normal_advance %d", callback_advance, normal_advance);
         exit(-1);
     }
-    LOG_DEBUG("  (...erase MIDI message...)");
+    // LOG_DEBUG("  (...erase MIDI message...)");
     size_t new_size = buffer_size - (normal_advance - callback_advance);
     // tklog_trace("    ....buffer before cleaning\n");
     // ShowBufferHexDump(midi_buffer, buffer_size, 0x00); 
@@ -1020,7 +1023,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             if (memcmp(&midi_buffer[i], IdentityReplySysexHeader, sizeof(IdentityReplySysexHeader)) == 0)
             {
                 // If so, substitue sysex identity request by the faked one
-                LOG_DEBUG("Identity request");
+                // LOG_DEBUG("Identity request");
                 memcpy(&midi_buffer[i + sizeof(IdentityReplySysexHeader)], DeviceInfoBloc[MPCId].sysexIdReply, sizeof(DeviceInfoBloc[MPCId].sysexIdReply));
                 i += sizeof(IdentityReplySysexHeader) + sizeof(DeviceInfoBloc[MPCId].sysexIdReply);
             }
@@ -1063,7 +1066,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
             normal_advance = 3;
             StoreButtonPress(note_number, midi_buffer[i + 2] == 0x7f ? true : false);
             mpc_to_force_mapping_p = &MPCButtonToForce[note_number];
-            LOG_DEBUG("Button %02x %02x => %p (CB=%p)", note_number, midi_buffer[i + 2], mpc_to_force_mapping_p, mpc_to_force_mapping_p->callback);
+            // LOG_DEBUG("Button %02x %02x => %p (CB=%p)", note_number, midi_buffer[i + 2], mpc_to_force_mapping_p, mpc_to_force_mapping_p->callback);
             if (mpc_to_force_mapping_p->callback != NULL)
                 callback_advance = mpc_to_force_mapping_p->callback(
                     mpc_to_force_mapping_p,
@@ -1076,11 +1079,11 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 callback_advance = 0;
 
             // Clean buffer
-            LOG_DEBUG("Before cleaning: i=%d, size=%d, callback says %d", i, size, callback_advance);
+            // LOG_DEBUG("Before cleaning: i=%d, size=%d, callback says %d", i, size, callback_advance);
             normal_advance = 3;
             i += cleanBufferAndAdvance(&midi_buffer[i], size - i, normal_advance, callback_advance);
             size = size - (normal_advance - callback_advance);
-            LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
+            // LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
             break;
 
         // PADS -------------------------------------------------------------------
@@ -1109,11 +1112,11 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
                 callback_advance = 0;
 
             // Clean buffer
-            LOG_DEBUG("Before cleaning: i=%d, size=%d, callback says %d", i, size, callback_advance);
+            // LOG_DEBUG("Before cleaning: i=%d, size=%d, callback says %d", i, size, callback_advance);
             normal_advance = 3;
             i += cleanBufferAndAdvance(&midi_buffer[i], size - i, normal_advance, callback_advance);
             size = size - (normal_advance - callback_advance);
-            LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
+            // LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
 
         default:
             // Nothing to do here, we consume the byte and go to the next
@@ -1140,7 +1143,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
     }
 
     // Regular function return
-    LOG_DEBUG(" ...   read returns size=%d", size);
+    // LOG_DEBUG(" ...   read returns size=%d", size);
     return size;
 }
 
@@ -1217,10 +1220,10 @@ size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                 // XXX Do we have messages with several pads updated in the same SYSEX?
                 normal_advance = sizeof(AkaiSysex) + 1 + sizeof(MPCSysexPadColorFn) + 4 + 1;
                 callback_advance = callback_advance > 0 ? 12 : 0;
-                LOG_DEBUG("Before cleaning: i=%d, size=%d", i, size);
+                // LOG_DEBUG("Before cleaning: i=%d, size=%d", i, size);
                 i += cleanBufferAndAdvance(&midi_buffer[i], size - i, normal_advance, callback_advance);
                 size = size - (normal_advance - callback_advance);
-                LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
+                // LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
                 continue;
             }
             else if (
@@ -1239,10 +1242,10 @@ size_t Mpc_MapAppWriteToForce(const void *midiBuffer, size_t size)
                     end_of_erase++;
                 if (end_of_erase < size) // check if 0xF7 was found before reaching the end of the buffer
                     end_of_erase++;      // increment i one more time to move to the octet after 0xF7
-                LOG_DEBUG("Before cleaning: i=%d, size=%d, end of erase=%d", i, size, end_of_erase);
+                // LOG_DEBUG("Before cleaning: i=%d, size=%d, end of erase=%d", i, size, end_of_erase);
                 i += cleanBufferAndAdvance(&midi_buffer[i], size - i, end_of_erase, 0);
                 size = size - (end_of_erase - i);
-                LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
+                // LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
             }
             else
             {
