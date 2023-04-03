@@ -587,26 +587,25 @@ size_t cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t 
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
         {
             IAMForceStatus.force_mode = MPC_FORCE_MODE_NOTE;
-            // setButtonColor(LIVEII_BT_FULL_LEVEL, midi_buffer[2]);
+            setModeButtons();        // Make sure we are still up to date with the pads
         }
         break;
     case FORCE_BT_STEP_SEQ:
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
         {
             IAMForceStatus.force_mode = MPC_FORCE_MODE_STEPSEQ;
-            // setButtonColor(LIVEII_BT_16_LEVEL, midi_buffer[2]);
+            setModeButtons();        // Make sure we are still up to date with the pads
         }
         break;
     case FORCE_BT_LAUNCH:
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
         {
             IAMForceStatus.force_mode = MPC_FORCE_MODE_LAUNCH;
-            // setButtonColor(LIVEII_BT_ERASE, midi_buffer[2]);
+            setModeButtons();        // Make sure we are still up to date with the pads
         }
         break;
     }
 
-    // setLayout(IAMForceStatus.pad_layout, false);        // Fake update to make sure we are still up to date with the pads
     return 0;
 }
 

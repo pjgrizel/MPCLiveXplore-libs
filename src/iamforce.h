@@ -25,6 +25,7 @@ extern void MPCSwitchMatrix(uint8_t new_mode, bool permanently);
 uint8_t getMPCPadNoteNumber(uint8_t pad_number);
 uint8_t getMPCPadNumber(uint8_t note_number);
 extern void setLayout(uint8_t pad_layout, bool permanent);
+extern void setModeButtons();
 extern void initProject();      // Special utility to start project
 extern int_fast8_t setLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
 extern void setButtonColor(uint8_t button, uint8_t color);

@@ -463,9 +463,6 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     LOG_DEBUG("    [before] Force native mode: %02x", IAMForceStatus.force_mode);
     LOG_DEBUG("    [before] mode buttons: %02x", IAMForceStatus.mode_buttons);
 
-    // Save button states
-    uint8_t button_colors[8];
-
     // // Check if we are already in the right layout
     // XXX Carefuly re-implement this, taking 'permanent' state into account
     // if (IAMForceStatus.project_loaded && IAMForceStatus.pad_layout == pad_layout)
@@ -505,6 +502,20 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     }
 
     // Set button colors
+    setModeButtons();
+
+    return;
+}
+
+
+
+// Set proper mode button colors according to the current layout
+inline void setModeButtons()
+{
+    // Save button states
+    uint8_t button_colors[8];
+
+    // Set button colors
     if (IAMForceStatus.mode_buttons & MODE_BUTTONS_TOP_MODE)
     {
         button_colors[0] = BUTTON_COLOR_LIGHT_YELLOW;
@@ -535,7 +546,7 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     }
 
     // Set specific pad colors for the TOP row
-    switch (pad_layout)
+    switch (IAMForceStatus.pad_layout)
     {
     case IAMFORCE_LAYOUT_PAD_BANK_A:
         button_colors[0] = BUTTON_COLOR_RED;
@@ -581,10 +592,6 @@ inline void setLayout(uint8_t pad_layout, bool permanent)
     setButtonColor(LIVEII_BT_FULL_LEVEL, button_colors[5]);
     setButtonColor(LIVEII_BT_16_LEVEL, button_colors[6]);
     setButtonColor(LIVEII_BT_ERASE, button_colors[7]);
-    LOG_DEBUG("    [ after] current layout: %02x", IAMForceStatus.pad_layout);
-    LOG_DEBUG("    [ after] permanent layout: %02x", IAMForceStatus.permanent_pad_layout);
-    LOG_DEBUG("    [ after] Force native mode: %02x", IAMForceStatus.force_mode);
-    LOG_DEBUG("    [ after] mode buttons: %02x", IAMForceStatus.mode_buttons);
 
     return;
 }
