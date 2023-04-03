@@ -252,6 +252,8 @@ static const uint8_t IdentityReplySysexHeader[] = {0xF0, 0x7E, 0x00, 0x06, 0x02,
 extern snd_rawmidi_t *rawvirt_inpriv;
 extern snd_rawmidi_t *rawvirt_outpriv;
 extern snd_rawmidi_t *rawvirt_outpub;
+extern snd_rawmidi_t *rawvirt_user_in;
+extern snd_rawmidi_t *rawvirt_user_out;
 
 // Our MPC product id (index in the table)
 extern int MPCOriginalId;

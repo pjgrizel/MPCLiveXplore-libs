@@ -24,7 +24,6 @@ extern void displayBatteryStatus();
 extern void MPCSwitchMatrix(uint8_t new_mode, bool permanently);
 uint8_t getMPCPadNoteNumber(uint8_t pad_number);
 uint8_t getMPCPadNumber(uint8_t note_number);
-size_t FakeMidiMessage(uint8_t buf[], size_t size);
 extern void setLayout(uint8_t pad_layout, bool permanent);
 extern void initProject();      // Special utility to start project
 extern int_fast8_t setLayoutPad(uint8_t matrix, uint8_t note_number, PadColor_t rgb, bool instant_set);
@@ -127,9 +126,10 @@ typedef struct IAMForceStatus_t
     uint8_t permanent_pad_layout;
 
     // Specific layouts for native Force modes
-    uint_fast8_t launch_mode_layout;    // A/B/C/D
-    uint_fast8_t stepseq_mode_layout;   // A/B/C/D
-    uint_fast8_t note_mode_layout;      // A/B/C/D
+    // XXX NOT IMPLEMENTED YET
+    // uint_fast8_t launch_mode_layout;    // A/B/C/D
+    // uint_fast8_t stepseq_mode_layout;   // A/B/C/D
+    // uint_fast8_t note_mode_layout;      // A/B/C/D
 
     // We keep the TAP value in memory (useful for flashing effects)
     bool tap_status;

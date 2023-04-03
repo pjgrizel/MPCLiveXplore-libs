@@ -109,8 +109,8 @@ snd_rawmidi_t *rawvirt_outpub = NULL;
 static char *user_virtual_portname = NULL;
 
 // End user virtual port handles
-static snd_rawmidi_t *rawvirt_user_in = NULL;
-static snd_rawmidi_t *rawvirt_user_out = NULL;
+snd_rawmidi_t *rawvirt_user_in = NULL;
+snd_rawmidi_t *rawvirt_user_out = NULL;
 
 // Internal product code file handler to change on the fly when the file will be opened
 // That avoids all binding stuff in shell

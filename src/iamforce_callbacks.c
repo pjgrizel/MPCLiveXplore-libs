@@ -26,7 +26,7 @@
  **************************************************************************/
 
 // Read portion of the default callback
-void cb_default_read(const MPCControlToForce_t *force_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
+size_t cb_default_read(const MPCControlToForce_t *force_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
     // SET PAD COLORS SYSEX ------------------------------------------------
     //                      v----- We start our midi buffer HERE, our pad # will be at i + sizeof(MPCSysexPadColorFn)
@@ -52,7 +52,7 @@ void cb_default_read(const MPCControlToForce_t *force_target, SourceType_t sourc
         if (force_target->note_number >= 0x80)
         {
             LOG_DEBUG("Button message from MPC to Force Pad => ignored");
-            FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
+            return 0;
         }
         else
         {
@@ -66,7 +66,7 @@ void cb_default_read(const MPCControlToForce_t *force_target, SourceType_t sourc
         {
             // NOTA: it makes no sense to send a button message to a Force Pad, so we ignore this case
             LOG_DEBUG("Button message from MPC to Force Pad => ignored");
-            FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
+            return 0;
         }
         else
         {
@@ -85,26 +85,28 @@ void cb_default_read(const MPCControlToForce_t *force_target, SourceType_t sourc
         else
         {
             LOG_DEBUG("Aftertouch message from Force to MPC => ignored");
-            FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
+            return 0;
         }
         break;
 
     case source_led:
         // Why would we even transmit LED to Force?!
         LOG_DEBUG("LED message from MPC to Force => ignored");
-        FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
+        return 0;
         break;
 
     case source_pad_sysex:
         // Why would we even transmit PAD COLOR to Force?!
         LOG_DEBUG("LED message from MPC to Force => ignored");
-        FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
+        return 0;
         break;
 
     default:
         // Meh. We transmit anyway (why not?)
         break;
     }
+
+    return SOURCE_MESSAGE_LENGTH[source_type];
 }
 
 // Force ====> MPC
@@ -120,8 +122,7 @@ size_t cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t sour
     case source_button_on:
     case source_button_off:
         LOG_DEBUG("Pad note message from Force to MPC => ignored");
-        FakeMidiMessage(midi_buffer, SOURCE_MESSAGE_LENGTH[source_type]);
-        break;
+        return 0;
 
     // Led. Interesting case.
     // If destination is a *note*, we just remap and adjust colors.
@@ -383,8 +384,10 @@ size_t cb_tap_tempo(const MPCControlToForce_t *force_target, const ForceControlT
 
 // Here we are manipulating edit buttons on the MPC. Let's guess what happens if I press them
 // (hint: it all boils down to the IAMForceStatus we're currently in)
-void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceType_t source_type, const uint8_t note_number, uint8_t *midi_buffer, const size_t buffer_size)
+size_t cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceType_t source_type, const uint8_t note_number, uint8_t *midi_buffer, const size_t buffer_size)
 {
+    size_t ret = buffer_size;
+
     // Handle PRESS
     if (midi_buffer[2] == 0x7f)
     {
@@ -400,40 +403,34 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
                 setLayout(IAMFORCE_LAYOUT_PAD_BANK_A + (note_number - LIVEII_BT_BANK_A), false);
             else
                 setLayout(IAMFORCE_LAYOUT_PAD_MODE + (note_number - LIVEII_BT_BANK_A), false);
-            FakeMidiMessage(midi_buffer, buffer_size);
+            ret = 0;
             break;
 
+        // Whatever the mode, we show the X-Fader layout instead of SELECT.
         case LIVEII_BT_NOTE_REPEAT:
-            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
-            {
-                setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
-                FakeMidiMessage(midi_buffer, buffer_size);
-            }
-            else
-            {
-                midi_buffer[1] = FORCE_BT_SELECT;
-            }
+            ret = 0;
+            setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
             break;
 
         case LIVEII_BT_FULL_LEVEL:
             if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
-                midi_buffer[1] = FORCE_BT_NOTE;       // Just propagate the button, don't change mode/layout
+                midi_buffer[1] = FORCE_BT_NOTE;
             else
                 midi_buffer[1] = FORCE_BT_EDIT;
             break;
 
         case LIVEII_BT_16_LEVEL:
             if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
-                midi_buffer[1] = FORCE_BT_STEP_SEQ;       // Just propagate the button, don't change mode/layout
+                midi_buffer[1] = FORCE_BT_STEP_SEQ;
             else
                 midi_buffer[1] = FORCE_BT_COPY;
             break;
 
         case LIVEII_BT_ERASE:
             if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
-                midi_buffer[1] = FORCE_BT_LAUNCH;       // Just propagate the button, don't change mode/layout
+                midi_buffer[1] = FORCE_BT_LAUNCH;
             else
-                midi_buffer[1] = FORCE_BT_EDIT;
+                midi_buffer[1] = FORCE_BT_DELETE;
             break;
 
         default:
@@ -476,7 +473,7 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);
-            FakeMidiMessage(midi_buffer, 3);
+            ret = 0;
             break;
 
         case LIVEII_BT_BANK_B:
@@ -489,7 +486,7 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);
-            FakeMidiMessage(midi_buffer, 3);
+            ret = 0;
             break;
         case LIVEII_BT_BANK_C:
             if (IAMForceStatus.is_click)
@@ -501,7 +498,7 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);
-            FakeMidiMessage(midi_buffer, 3);
+            ret = 0;
             break;
         case LIVEII_BT_BANK_D:
             if (IAMForceStatus.is_click)
@@ -513,69 +510,45 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
             }
             else
                 setLayout(IAMForceStatus.permanent_pad_layout, true);
-            FakeMidiMessage(midi_buffer, 3);
+            ret = 0;
             break;
 
+        // NOTE REPEAT ("Select") button: we toggle the BOTTOM LOCK mode!
         case LIVEII_BT_NOTE_REPEAT:
-            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
-                FakeMidiMessage(midi_buffer, buffer_size);
-            else
-                midi_buffer[1] = FORCE_BT_SELECT;
+            if (IAMForceStatus.is_click)
+            {
+                // We toggle lock mode, BUT we go back to whatever bank we were in!
+                if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK)
+                {
+                    IAMForceStatus.mode_buttons &= ~MODE_BUTTONS_BOTTOM_LOCK;
+                    setLayout(IAMForceStatus.permanent_pad_layout, true);
+                }
+                else
+                {
+                    IAMForceStatus.mode_buttons |= MODE_BUTTONS_BOTTOM_LOCK;
+                    setLayout(IAMForceStatus.permanent_pad_layout, true);
+                }
+            }
+            ret = 0;
             break;
 
         case LIVEII_BT_FULL_LEVEL:
-            if (IAMForceStatus.is_click)
-            {
-                // Release EDIT button (if any) and simulate a full button click
-                uint8_t message[] = {0x90, FORCE_BT_EDIT, 0x00};
-                tklog_trace("additional dump snd_rawmidi_write\n");
-                ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
-                message[1] = FORCE_BT_NOTE;
-                message[2] = 0x7f;
-                tklog_trace("additional dump snd_rawmidi_write\n");
-                ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
-                midi_buffer[1] = FORCE_BT_NOTE;       // Just propagate the button, don't change mode/layout
-            }
+            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
+                midi_buffer[1] = FORCE_BT_NOTE;
             else
                 midi_buffer[1] = FORCE_BT_EDIT;
             break;
 
         case LIVEII_BT_16_LEVEL:
-            if (IAMForceStatus.is_click)
-            {
-                // Release EDIT button (if any) and simulate a full button click
-                uint8_t message[] = {0x90, FORCE_BT_COPY, 0x00};
-                tklog_trace("additional dump snd_rawmidi_write\n");
-                ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
-                message[1] = FORCE_BT_STEP_SEQ;
-                message[2] = 0x7f;
-                tklog_trace("additional dump snd_rawmidi_write\n");
-                ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
-                midi_buffer[1] = FORCE_BT_STEP_SEQ;       // Just propagate the button, don't change mode/layout
-            }
+            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
+                midi_buffer[1] = FORCE_BT_STEP_SEQ;
             else
                 midi_buffer[1] = FORCE_BT_COPY;
             break;
 
         case LIVEII_BT_ERASE:
-            if (IAMForceStatus.is_click)
-            {
-                // Release EDIT button (if any) and simulate a full button click
-                uint8_t message[] = {0x90, FORCE_BT_DELETE, 0x00};
-                tklog_trace("additional dump snd_rawmidi_write\n");
-                ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
-                message[1] = FORCE_BT_LAUNCH;
-                message[2] = 0x7f;
-                tklog_trace("additional dump snd_rawmidi_write\n");
-                ShowBufferHexDump(message, sizeof(message), 0x00);
-                orig_snd_rawmidi_write(rawvirt_outpub, message, sizeof(message));
-                midi_buffer[1] = FORCE_BT_LAUNCH;       // Just propagate the button, don't change mode/layout
-            }
+            if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_MODE)
+                midi_buffer[1] = FORCE_BT_LAUNCH;
             else
                 midi_buffer[1] = FORCE_BT_DELETE;
             break;
@@ -583,35 +556,58 @@ void cb_edit_button_read(const MPCControlToForce_t *force_target, const SourceTy
     }
 
     // Ok we're done here
-    return;
+    return ret;
 }
 
 // The write function just handles proper color display in each mode
-void cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
+size_t cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
     LOG_DEBUG("Enter MODE button write for note %02x / Value %02x", note_number, midi_buffer[2]);
     switch (note_number)
     {
         // We ignore those buttons feedbacks
         // XXX we should implement them someday
-    case FORCE_BT_SELECT:
-    case FORCE_BT_EDIT:
-    case FORCE_BT_COPY:
-    case FORCE_BT_DELETE:
-        break;
+    // case FORCE_BT_SELECT:
+    //     if (!(IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK))
+    //         setButtonColor(LIVEII_BT_NOTE_REPEAT, midi_buffer[2]);
+    //     break;
+    // case FORCE_BT_EDIT:
+    //     if (!(IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK))
+    //         setButtonColor(LIVEII_BT_FULL_LEVEL, midi_buffer[2]);
+    //     break;
+    // case FORCE_BT_COPY:
+    //     if (!(IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK))
+    //         setButtonColor(LIVEII_BT_16_LEVEL, midi_buffer[2]);
+    //     break;
+    // case FORCE_BT_DELETE:
+    //     if (!(IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK))
+    //         setButtonColor(LIVEII_BT_ERASE, midi_buffer[2]);
+    //     break;
     case FORCE_BT_NOTE:
-        IAMForceStatus.force_mode = MPC_FORCE_MODE_NOTE;
+        if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
+        {
+            IAMForceStatus.force_mode = MPC_FORCE_MODE_NOTE;
+            // setButtonColor(LIVEII_BT_FULL_LEVEL, midi_buffer[2]);
+        }
         break;
     case FORCE_BT_STEP_SEQ:
-        IAMForceStatus.force_mode = MPC_FORCE_MODE_STEPSEQ;
+        if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
+        {
+            IAMForceStatus.force_mode = MPC_FORCE_MODE_STEPSEQ;
+            // setButtonColor(LIVEII_BT_16_LEVEL, midi_buffer[2]);
+        }
         break;
     case FORCE_BT_LAUNCH:
-        IAMForceStatus.force_mode = MPC_FORCE_MODE_LAUNCH;
+        if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
+        {
+            IAMForceStatus.force_mode = MPC_FORCE_MODE_LAUNCH;
+            // setButtonColor(LIVEII_BT_ERASE, midi_buffer[2]);
+        }
         break;
     }
 
-    FakeMidiMessage(midi_buffer, 3);
-    setLayout(IAMForceStatus.pad_layout, false);        // Fake update
+    setLayout(IAMForceStatus.pad_layout, false);        // Fake update to make sure we are still up to date with the pads
+    return 0;
 }
 
 // Aaaaah, THE big callback! This is where a lot of funny stuff happens!
@@ -628,11 +624,11 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
         // 1st line
         case LIVEII_PAD_TL0:
             setLayout(IAMFORCE_LAYOUT_PAD_XFDR, false);
-            FakeMidiMessage(midi_buffer, 3);
+            // FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL1:
             setLayout(IAMFORCE_LAYOUT_PAD_SCENE, false);
-            FakeMidiMessage(midi_buffer, 3);
+            // FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL2:
             setLayout(IAMFORCE_LAYOUT_PAD_BANK_A, false);
@@ -648,11 +644,11 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
         // 2d line
         case LIVEII_PAD_TL4:
             setLayout(IAMFORCE_LAYOUT_PAD_MUTE, false);
-            FakeMidiMessage(midi_buffer, 3);
+            // FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL5:
             setLayout(IAMFORCE_LAYOUT_PAD_COLS, false);
-            FakeMidiMessage(midi_buffer, 3);
+            // FakeMidiMessage(midi_buffer, 3);
             break;
         case LIVEII_PAD_TL6:
             setLayout(IAMFORCE_LAYOUT_PAD_BANK_C, false);
@@ -710,14 +706,14 @@ size_t cb_mode_e(const MPCControlToForce_t *force_target, const ForceControlToMP
 
         default:
             LOG_ERROR("cb_mode_e: unknown note number %d", note_number);
-            FakeMidiMessage(midi_buffer, 3);
+            // FakeMidiMessage(midi_buffer, 3);
         }
     }
     else
     {
         // Meh.
         LOG_ERROR("cb_mode_e: can't work in WRITE mode!");
-        FakeMidiMessage(midi_buffer, buffer_size);
+        // FakeMidiMessage(midi_buffer, buffer_size);
     }
 
     LOG_ERROR("Mode e callback returns %d", SOURCE_MESSAGE_LENGTH[source_type]);
@@ -757,7 +753,7 @@ size_t cb_xfader(const MPCControlToForce_t *force_target, const ForceControlToMP
     }
 
     // Completely swallow the message
-    return FakeMidiMessage(midi_buffer, buffer_size);
+    return 0;
 }
 
 size_t cb_shift(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
@@ -771,9 +767,9 @@ size_t cb_edit_button(const MPCControlToForce_t *force_target, const ForceContro
 {
     LOG_DEBUG("Entering edit_button callback for Force note %02x", note_number);
     if (force_target != NULL)
-        cb_edit_button_read(force_target, source_type, note_number, midi_buffer, buffer_size);
+        return cb_edit_button_read(force_target, source_type, note_number, midi_buffer, buffer_size);
     else if (mpc_target != NULL)
-        cb_edit_button_write(mpc_target, source_type, note_number, midi_buffer, buffer_size);
+        return cb_edit_button_write(mpc_target, source_type, note_number, midi_buffer, buffer_size);
     else
         LOG_ERROR("cb_mode_e: both force_target and mpc_target are NULL!");
 
@@ -784,6 +780,5 @@ size_t cb_edit_button(const MPCControlToForce_t *force_target, const ForceContro
 size_t cb_play(const MPCControlToForce_t *force_target, const ForceControlToMPC_t *mpc_target, SourceType_t source_type, uint8_t note_number, uint8_t *midi_buffer, size_t buffer_size)
 {
     // XXX CHECK AGAINST BUFFER OVERFLOW
-    FakeMidiMessage(midi_buffer, 3);
-    return 3;
+    return 0;
 }
