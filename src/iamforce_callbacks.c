@@ -136,71 +136,63 @@ size_t cb_default_write(const ForceControlToMPC_t *mpc_target, SourceType_t sour
             midi_buffer[1] = mpc_target->note_number;
             LOG_DEBUG("LED message from Force to MPC %02x.%02x: %02x", mpc_target->bank, mpc_target->note_number, mpc_target->color);
 
-            switch (mpc_target->color)
+            if (mpc_target->bank == IAMFORCE_LAYOUT_NONE)
             {
-            // WARNING!!! This is a hack to make the Force Pads work like buttons, BUT...
-            // ...Avoid using COLOR_xxx for these buttons, this won't work correctly!
-            case COLOR_RED:
-                midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_RED : BUTTON_COLOR_LIGHT_RED);
-                break;
-            case COLOR_YELLOW:
-                midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_YELLOW : BUTTON_COLOR_LIGHT_YELLOW);
-                break;
-            case COLOR_LIGHT_RED:
-                midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_OFF : BUTTON_COLOR_LIGHT_RED);
-                break;
-            case COLOR_LIGHT_YELLOW:
-                midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_OFF : BUTTON_COLOR_LIGHT_YELLOW);
-                break;
-            case COLOR_ORANGE:
-                midi_buffer[2] = BUTTON_COLOR_YELLOW_RED;
-                break;
-            default:
-                if (mpc_target->bank != IAMFORCE_LAYOUT_NONE)
-                {   
-                    // We should update the pad color accordingly
-                    // Create / imagine lower shades for colors
-                    color = mpc_target->color;
-                    if (midi_buffer[2] < 0x03)
-                    {
-                        switch(color)
-                        {
-                            case 0x00007F:
-                                color = 0x000006;
-                                break;
-                            case 0x007F00:
-                                color = 0x000600;
-                                break;
-                            case 0x7F0000:
-                                color = 0x060000;
-                                break;
-                            case 0x2F1900:
-                                color = 0x060300;
-                            default:
-                                // Make the color darker
-                                // Color is 0xRRGGBB but on 7 bits per Channel!
-                                color = (
-                                    ((color & 0x7F0000) >> 1) |
-                                    ((color & 0x007F00) >> 1) |
-                                    ((color & 0x00007F) >> 1)
-                                );
-                        }
-                    }
-
-                    // Set pad color & swallow message
-                    setLayoutPad(
-                        mpc_target->bank,
-                        mpc_target->note_number,
-                        color,
-                        true);
-                    return 0;
-                }
-                else
+                switch (mpc_target->color)
                 {
-                    LOG_DEBUG("    Unexpected source LED value for %02x: %02x, we keep the original value", mpc_target->note_number, mpc_target->color);
-                    midi_buffer[2] = BUTTON_COLOR_RED;
+                case COLOR_RED:
+                    midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_RED : BUTTON_COLOR_LIGHT_RED);
+                    break;
+                case COLOR_YELLOW:
+                    midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_YELLOW : BUTTON_COLOR_LIGHT_YELLOW);
+                    break;
+                case COLOR_LIGHT_RED:
+                    midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_OFF : BUTTON_COLOR_LIGHT_RED);
+                    break;
+                case COLOR_LIGHT_YELLOW:
+                    midi_buffer[2] = (midi_buffer[2] < 0x03 ? BUTTON_COLOR_OFF : BUTTON_COLOR_LIGHT_YELLOW);
+                    break;
+                case COLOR_ORANGE:
+                    midi_buffer[2] = BUTTON_COLOR_YELLOW_RED;
+                    break;
                 }
-                break;
+            }
+            else    // ...this is a pad!
+            {
+                // We should update the pad color accordingly
+                // Create / imagine lower shades for colors
+                color = mpc_target->color;
+                if (midi_buffer[2] < 0x03)
+                {
+                    switch (color)
+                    {
+                    case 0x00007F:
+                        color = 0x000006;
+                        break;
+                    // case 0x007F00:
+                    //     color = 0x000600;
+                    //     break;
+                    case 0x7F0000:
+                        color = 0x060000;
+                        break;
+                    case 0x2F1900:
+                        color = 0x060300;
+                        break;
+                    default:
+                        // Make the color darker
+                        // Color is 0xRRGGBB but on 7 bits per Channel!
+                        color = ((((color >> 16) & 0xFF)/8 << 16) | (((color >> 8) & 0xFF)/8 << 8 ) | (((color & 0xFF) /8 )));
+                        LOG_DEBUG("Color %06x => %06x", mpc_target->color, color);
+                    }
+                }
+
+                // Set pad color & swallow message
+                setLayoutPad(
+                    mpc_target->bank,
+                    mpc_target->note_number,
+                    color,
+                    true);
+                return 0;
             }
         }
         else
@@ -500,7 +492,7 @@ size_t cb_edit_button_read(const MPCControlToForce_t *force_target, const Source
                 // Permanent mode is BANK A-D
                 case IAMFORCE_LAYOUT_PAD_BANK_A:
                     // Lock/Unlock mode buttons
-                    IAMForceStatus.mode_buttons = MODE_BUTTONS_TOP_LOCK | MODE_BUTTONS_BOTTOM_LOCK;
+                    IAMForceStatus.mode_buttons = MODE_BUTTONS_TOP_LOCK;
                     setLayout(IAMFORCE_LAYOUT_PAD_MODE, true);
                     break;
                 case IAMFORCE_LAYOUT_PAD_BANK_B:
@@ -634,21 +626,21 @@ size_t cb_edit_button_write(const ForceControlToMPC_t *mpc_target, SourceType_t 
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
         {
             IAMForceStatus.force_mode = MPC_FORCE_MODE_NOTE;
-            setModeButtons();        // Make sure we are still up to date with the pads
+            setModeButtons(); // Make sure we are still up to date with the pads
         }
         break;
     case FORCE_BT_STEP_SEQ:
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
         {
             IAMForceStatus.force_mode = MPC_FORCE_MODE_STEPSEQ;
-            setModeButtons();        // Make sure we are still up to date with the pads
+            setModeButtons(); // Make sure we are still up to date with the pads
         }
         break;
     case FORCE_BT_LAUNCH:
         if (IAMForceStatus.mode_buttons & MODE_BUTTONS_BOTTOM_LOCK && midi_buffer[2] == 0x03)
         {
             IAMForceStatus.force_mode = MPC_FORCE_MODE_LAUNCH;
-            setModeButtons();        // Make sure we are still up to date with the pads
+            setModeButtons(); // Make sure we are still up to date with the pads
         }
         break;
     }

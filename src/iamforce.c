@@ -226,24 +226,35 @@ static MPCControlToForce_t MPCPadToForce[IAMFORCE_LAYOUT_N][16] = {
         [0 ... 15].note_number = 0xff,
         // 1st line
         [0x00].note_number = FORCE_BT_STOP_ALL,
+        [0x00].color = COLOR_FIRE,
         [0x01].note_number = FORCE_BT_UP,
+        [0x01].color = COLOR_GREY,
         [0x02].note_number = FORCE_BT_LAUNCH_1,
+        [0x02].color = 0x007F00,
         [0x03].note_number = FORCE_BT_LAUNCH_5,
+        [0x03].color = 0x004700,
         // 2d line
-        [0x04].note_number = FORCE_BT_STOP_ALL,
+        [0x04].note_number = FORCE_BT_UNSET,
         [0x05].note_number = FORCE_BT_DOWN,
+        [0x05].color = COLOR_GREY,
         [0x06].note_number = FORCE_BT_LAUNCH_2,
+        [0x06].color = 0x007F00,
         [0x07].note_number = FORCE_BT_LAUNCH_6,
+        [0x07].color = 0x004700,
         // 3rd line
         [0x08].note_number = FORCE_BT_UNSET,
         [0x09].note_number = FORCE_BT_UNSET,
         [0x0a].note_number = FORCE_BT_LAUNCH_3,
+        [0x0a].color = 0x007F00,
         [0x0b].note_number = FORCE_BT_LAUNCH_7,
+        [0x0b].color = 0x004700,
         // Last line
         [0x0c].note_number = FORCE_BT_UNSET,
         [0x0d].note_number = FORCE_BT_UNSET,
         [0x0e].note_number = FORCE_BT_LAUNCH_4,
-        [0x0f].note_number = FORCE_BT_LAUNCH_8},
+        [0x0e].color = 0x007F00,
+        [0x0f].note_number = FORCE_BT_LAUNCH_8,
+        [0x0f].color = 0x004700},
 
     // IAMFORCE_LAYOUT_PAD_XFDR
     {
