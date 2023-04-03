@@ -1070,6 +1070,7 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 
             // Clean buffer
             LOG_DEBUG("Before cleaning: i=%d, size=%d, callback says %d", i, size, callback_advance);
+            normal_advance = 3;
             i += cleanBufferAndAdvance(&midi_buffer[i], size - i, normal_advance, callback_advance);
             size = size - (normal_advance - callback_advance);
             LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
@@ -1102,7 +1103,8 @@ size_t Mpc_MapReadFromForce(void *midiBuffer, size_t maxSize, size_t size)
 
             // Clean buffer
             LOG_DEBUG("Before cleaning: i=%d, size=%d, callback says %d", i, size, callback_advance);
-            i += cleanBufferAndAdvance(&midi_buffer[i], size - i, callback_advance, normal_advance);
+            normal_advance = 3;
+            i += cleanBufferAndAdvance(&midi_buffer[i], size - i, normal_advance, callback_advance);
             size = size - (normal_advance - callback_advance);
             LOG_DEBUG("After cleaning: i=%d, size=%d", i, size);
 
