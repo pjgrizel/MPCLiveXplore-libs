@@ -1,4 +1,4 @@
-/*
+  /*
 __ __| |           |  /_) |     ___|             |           |
   |   __ \   _ \  ' /  | |  / |      _ \ __ \   |      _` | __ \   __|
   |   | | |  __/  . \  |   <  |   |  __/ |   |  |     (   | |   |\__ \
@@ -8,7 +8,7 @@ TKGL_MIDIMAPPER  custom mapping library .
 This is a custom midi mapping library for TKGL_MIDIMAPPER LD_PRELOAD library
 
 ----------------------------------------------------------------------------
-LAUNCHPAD MINI MK3 FOR IAMFORCE
+LAUNCHPAD PRO MK3 FOR IAMFORCE
 ----------------------------------------------------------------------------
 
   Disclaimer.
@@ -36,7 +36,8 @@ LAUNCHPAD MINI MK3 FOR IAMFORCE
 
 /*
 -------------------------------------------------------------------------------
-MAPPING CONFIGURATION WITH FORCE BUTTONS AND FUNCTIONS - LAUNCHPAD MINI MK3
+MAPPING CONFIGURATION WITH FORCE BUTTONS AND FUNCTIONS - LAUNCHPAD PRO MK3
+USE THE PROGRAMMER MODE 8
 
 
 - UP BUTTON aka "Controller SHIFT"
@@ -102,13 +103,16 @@ show columns pads permanenently.
 */
 
 #define IAMFORCE_DRIVER_VERSION "1.0"
-#define IAMFORCE_DRIVER_ID "LPMK3"
-#define IAMFORCE_DRIVER_NAME "Novation Launchpad Mini Mk3"
-#define IAMFORCE_ALSASEQ_DEFAULT_CLIENT_NAME "Launchpad Mini MK3"
+#define IAMFORCE_DRIVER_ID "LPPROMK3"
+#define IAMFORCE_DRIVER_NAME "Novation Launchpad Pro Mk3"
+#define IAMFORCE_ALSASEQ_DEFAULT_CLIENT_NAME "Launchpad Pro Mk3"
 #define IAMFORCE_ALSASEQ_DEFAULT_PORT 1
 
-#define LP_DEVICE_ID 0x0D // Launchpad Mini MK3
+//#define LP_DEVICE_ID 0x0D // Launchpad Mini MK3
 //#define LP_DEVICE_ID 0x0C // Launchpad X
+
+ // Launchpad Pro Mk3
+#define LP_DEVICE_ID 0x0E
 
 #define LP_SYSEX_HEADER 0xF0,0x00,0x20,0x29,0x02, LP_DEVICE_ID
 
@@ -159,17 +163,47 @@ show columns pads permanenently.
 
 
 
-// SYSEX for Launchpad mini Mk3
+// SYSEX for Launchpad pro Mk3
 
 const uint8_t SX_DEVICE_INQUIRY[] = { 0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7 };
-const uint8_t SX_LPMK3_INQUIRY_REPLY_APP[] = { 0xF0, 0x7E, 0x00, 0x06, 0x02, 0x00, 0x20, 0x29, 0x13, 0x01, 0x00, 0x00 } ;
-//const uint8_t SX_LPMK3_PGM_MODE = { 0xF0, 0x00, 0x20, 0x29, 0x02, 0x0D, 0x00, 0x7F, 0xF7} ;
+
 const uint8_t SX_LPMK3_PGM_MODE[]  = { LP_SYSEX_HEADER, 0x0E, 0x01, 0xF7 } ;
 const uint8_t SX_LPMK3_DAW_MODE[]  = { LP_SYSEX_HEADER, 0x10, 0x01, 0xF7 } ;
 const uint8_t SX_LPMK3_STDL_MODE[] = { LP_SYSEX_HEADER, 0x10, 0x00, 0xF7 } ;
 const uint8_t SX_LPMK3_DAW_CLEAR[] = { LP_SYSEX_HEADER, 0x12, 0x01, 0x00, 0X01, 0xF7 } ;
 
+// F0h 00h 20h 29h 02h 0Eh 00h <layout> <page> 00h F7h
+
+// Hex: 00h / Decimal: 0 --- Session (only selectable in DAW mode)
+// Hex: 01h / Decimal: 1 --- Fader
+// Hex: 02h / Decimal: 2 --- Chord
+// Hex: 03h / Decimal: 3 --- Custom Mode
+// Hex: 04h / Decimal: 4 --- Note / Drum
+// Hex: 05h / Decimal: 5 --- Scale Settings
+// Hex: 06h / Decimal: 6 --- Sequencer Settings
+// Hex: 07h / Decimal: 7 --- Sequencer Steps
+// Hex: 08h / Decimal: 8 --- Sequencer Velocity
+// Hex: 09h / Decimal: 9 --- Sequencer Pattern Settings
+// Hex: 0Ah / Decimal: 10 --- Sequencer Probability
+// Hex: 0Bh / Decimal: 11 --- Sequencer Mutation
+// Hex: 0Ch / Decimal: 12 --- Sequencer Micro Step
+// Hex: 0Dh / Decimal: 13 --- Sequencer Projects
+// Hex: 0Eh / Decimal: 14 --- Sequencer Patterns
+// Hex: 0Fh / Decimal: 15 --- Sequencer Tempo
+// Hex: 10h / Decimal: 16 --- Sequencer Swing
+// Hex: 11h / Decimal: 17 --- Programmer Mode
+// Hex: 12h / Decimal: 18 --- Settings Menu
+// Hex: 13h / Decimal: 19 --- Custom mode Settings
+
+// Where the available pages are:
+// Hex: 00h-07h / Decimal: 0-7 --- for Custom Mode Views
+// Hex: 00h-03h / Decimal: 0-3 --- for any Sequencer View
+// Hex: 00h-03h / Decimal: 0-3 --- for Fader view
+// Hex: 00h-04h / Decimal: 0-4 --- for Settings Menu
+// Hex: 00h / Decimal: 0 --- for any other view
+
 //F0h 00h 20h 29h 02h 0Dh 07h [<loop> <speed> 0x01 R G B [<text>] ] F7h
+
 const uint8_t SX_LPMK3_TEXT_SCROLL[] = { LP_SYSEX_HEADER, 0x07 };
 
 // 0xF0, 0x00, 0x20, 0x29, 0x02, 0x0D, 0x03, 0x03 (Led Index) ( r) (g)  (b)
@@ -334,7 +368,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     else if ( ev->data.control.param == FORCE_BT_MUTE )   {
       if ( ev->data.control.value == 3 ) {
         mapVal = CTRL_BT_STOP_SM   ;
-  
+ 
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_AMBER ;
       }
@@ -343,7 +377,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     else if ( ev->data.control.param == FORCE_BT_SOLO )   {
       if ( ev->data.control.value == 3 ) {
         mapVal = CTRL_BT_STOP_SM   ;
-   
+
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_BLUE ;
       }
@@ -352,7 +386,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     else if ( ev->data.control.param == FORCE_BT_REC_ARM ) {
       if ( ev->data.control.value == 3 ) {
         mapVal = CTRL_BT_STOP_SM   ;
-
+       
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_RED ;
       }
@@ -415,6 +449,8 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
         if       ( ev->data.control.param == CTRL_BT_UP) { // ^
           // UP holded = shitfmode on the Launchpad
           CtrlShiftMode = ( ev->data.control.value == 0x7F );
+          //mapVal = FORCE_BT_SHIFT;
+
           return false;
         }
 
@@ -554,15 +590,15 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
               ev->data.note.velocity = ( ev->data.note.velocity > 0 ? 0x7F:00);
             }
         }
-        else { 
+        else  {
           ev->data.note.channel = 9; // Note Force pad
-                // If Shift Mode, simulate Select key
+          // If Shift Mode, simulate Select key
           if ( CtrlShiftMode ) {
-            SendDeviceKeyEvent(FORCE_BT_SELECT,0x7F);
-            SendMidiEvent(ev);
-            SendDeviceKeyEvent(FORCE_BT_SELECT,0);
-            return false;
-          }
+              SendDeviceKeyEvent(FORCE_BT_SELECT,0x7F);
+              SendMidiEvent(ev);
+              SendDeviceKeyEvent(FORCE_BT_SELECT,0);
+              return false;
+            }
         }
       }
   }

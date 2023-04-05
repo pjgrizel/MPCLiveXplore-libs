@@ -8,7 +8,7 @@ TKGL_MIDIMAPPER  custom mapping library .
 This is a custom midi mapping library for TKGL_MIDIMAPPER LD_PRELOAD library
 
 ----------------------------------------------------------------------------
-LAUNCHPAD MINI MK3 FOR IAMFORCE
+LAUNCHPAD MK2 FOR IAMFORCE
 ----------------------------------------------------------------------------
 
   Disclaimer.
@@ -102,33 +102,35 @@ show columns pads permanenently.
 */
 
 #define IAMFORCE_DRIVER_VERSION "1.0"
-#define IAMFORCE_DRIVER_ID "LPMK3"
-#define IAMFORCE_DRIVER_NAME "Novation Launchpad Mini Mk3"
-#define IAMFORCE_ALSASEQ_DEFAULT_CLIENT_NAME "Launchpad Mini MK3"
+#define IAMFORCE_DRIVER_ID "LPMK2"
+#define IAMFORCE_DRIVER_NAME "Novation Launchpad Mini Mk2"
+#define IAMFORCE_ALSASEQ_DEFAULT_CLIENT_NAME "Launchpad Mini MK2"
 #define IAMFORCE_ALSASEQ_DEFAULT_PORT 1
 
-#define LP_DEVICE_ID 0x0D // Launchpad Mini MK3
+//#define LP_DEVICE_ID 0x0D // Launchpad Mini MK3
 //#define LP_DEVICE_ID 0x0C // Launchpad X
+
+#define LP_DEVICE_ID 0x18 // Launchpad MK2
 
 #define LP_SYSEX_HEADER 0xF0,0x00,0x20,0x29,0x02, LP_DEVICE_ID
 
-#define CTRL_BT_UP 0x5B
-#define CTRL_BT_DOWN 0x5C
-#define CTRL_BT_LEFT 0x5D
-#define CTRL_BT_RIGHT 0x5E
-#define CTRL_BT_SESSION 0x5F
-#define CTRL_BT_DRUMS 0x60
-#define CTRL_BT_KEYS 0x61
-#define CTRL_BT_USER 0x62
-#define CTRL_BT_LOGO 0x63
-#define CTRL_BT_LAUNCH_1 0x59
-#define CTRL_BT_LAUNCH_2 0x4F
-#define CTRL_BT_LAUNCH_3 0x45
-#define CTRL_BT_LAUNCH_4 0x3B
-#define CTRL_BT_LAUNCH_5 0x31
-#define CTRL_BT_LAUNCH_6 0x27
-#define CTRL_BT_LAUNCH_7 0x1D
-#define CTRL_BT_STOP_SM 0x13
+#define CTRL_BT_UP 0x68
+#define CTRL_BT_DOWN 0x69
+#define CTRL_BT_LEFT 0x6A
+#define CTRL_BT_RIGHT 0x6B
+#define CTRL_BT_SESSION 0x6C
+#define CTRL_BT_USER1 0x6D
+#define CTRL_BT_USER2 0x6E
+#define CTRL_BT_MIXER 0x62
+#define CTRL_BT_LAUNCH_1 0x59  // Also Volume
+#define CTRL_BT_LAUNCH_2 0x4F  // Pan
+#define CTRL_BT_LAUNCH_3 0x45  // Send A
+#define CTRL_BT_LAUNCH_4 0x3B  // Send B
+#define CTRL_BT_LAUNCH_5 0x31  // Stop
+#define CTRL_BT_LAUNCH_6 0x27  // Mute
+#define CTRL_BT_LAUNCH_7 0x1D  // Solo
+#define CTRL_BT_LAUNCH_8 0x13  // Record Arm
+
 
 // Pads start at 0 from bottom left to upper right
 #define CTRL_PAD_NOTE_OFFSET 0
@@ -162,39 +164,36 @@ show columns pads permanenently.
 // SYSEX for Launchpad mini Mk3
 
 const uint8_t SX_DEVICE_INQUIRY[] = { 0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7 };
-const uint8_t SX_LPMK3_INQUIRY_REPLY_APP[] = { 0xF0, 0x7E, 0x00, 0x06, 0x02, 0x00, 0x20, 0x29, 0x13, 0x01, 0x00, 0x00 } ;
-//const uint8_t SX_LPMK3_PGM_MODE = { 0xF0, 0x00, 0x20, 0x29, 0x02, 0x0D, 0x00, 0x7F, 0xF7} ;
-const uint8_t SX_LPMK3_PGM_MODE[]  = { LP_SYSEX_HEADER, 0x0E, 0x01, 0xF7 } ;
-const uint8_t SX_LPMK3_DAW_MODE[]  = { LP_SYSEX_HEADER, 0x10, 0x01, 0xF7 } ;
-const uint8_t SX_LPMK3_STDL_MODE[] = { LP_SYSEX_HEADER, 0x10, 0x00, 0xF7 } ;
-const uint8_t SX_LPMK3_DAW_CLEAR[] = { LP_SYSEX_HEADER, 0x12, 0x01, 0x00, 0X01, 0xF7 } ;
+const uint8_t SX_LPMK2_INQUIRY_REPLY_APP[] = { 0xF0, 0x7E, 0x00, 0x06, 0x02, 0x00, 0x20, 0x29, 0x13, 0x01, 0x00, 0x00 } ;
 
-//F0h 00h 20h 29h 02h 0Dh 07h [<loop> <speed> 0x01 R G B [<text>] ] F7h
-const uint8_t SX_LPMK3_TEXT_SCROLL[] = { LP_SYSEX_HEADER, 0x07 };
+//const uint8_t SX_LPMK2_USER_MODE[]  = { LP_SYSEX_HEADER, 0x0E, 0x01, 0xF7 } ;
+//F0h 00h 20h 29h 02h 18h 22h <Layout> F7
+const uint8_t SX_LPMK2_USER2_MODE[]  = { LP_SYSEX_HEADER, 0x22, 0x02, 0xF7 } ;
 
-// 0xF0, 0x00, 0x20, 0x29, 0x02, 0x0D, 0x03, 0x03 (Led Index) ( r) (g)  (b)
-uint8_t SX_LPMK3_LED_RGB_COLOR[] = { LP_SYSEX_HEADER, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0xF7 };
+// Host >> Launchpad MK2: F0h 00h 20h 29h 02h 18h 14h <Colour> <Loop> <Text> F7h
+const uint8_t SX_LPMK2_TEXT_SCROLL[] = { LP_SYSEX_HEADER, 0x14 };
 
+// The brightness of the individual red, green and blue elements of the LED can be controlled to 
+// create any colour. Each element has a brightness value from 00h – 3Fh (0 – 63), where 0 is off and 
+// 3Fh is full brightness. 
+// § Light LED using SysEx (RGB mode) 
+// Host >> Launchpad MK2: F0h 00h 20h 29h 02h 18h 0Bh <LED>, <Red> <Green> <Blue> F7h
+// Message can be repeated up to 80 times.
+
+uint8_t SX_LPMK2_LED_RGB_COLOR[] = { LP_SYSEX_HEADER, 0x0B, 0x00, 0x00, 0x00, 0x00, 0xF7 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// LaunchPad Mini Mk3 Specifics
+// LaunchPad Mk2 Specifics
 ///////////////////////////////////////////////////////////////////////////////
 // Scroll a Text on pads
-static void ControllerScrollText(const char *message,uint8_t loop, uint8_t speed, uint32_t rgbColor) {
+static void ControllerScrollText(const char *message,uint8_t loop,  uint8_t color) {
   uint8_t buffer[128];
   uint8_t *pbuff = buffer;
 
-  memcpy(pbuff,SX_LPMK3_TEXT_SCROLL,sizeof(SX_LPMK3_TEXT_SCROLL));
-  pbuff += sizeof(SX_LPMK3_TEXT_SCROLL) ;
+  memcpy(pbuff,SX_LPMK2_TEXT_SCROLL,sizeof(SX_LPMK2_TEXT_SCROLL));
+  pbuff += sizeof(SX_LPMK2_TEXT_SCROLL) ;
+  *(pbuff ++ ) = color; //  color
   *(pbuff ++ ) = loop;  // loop
-  *(pbuff ++ ) = speed; // Speed
-  *(pbuff ++ ) = 03;    // RGB color
-
-  RGBcolor_t col = { .v = rgbColor};
-
-  *(pbuff ++ ) = col.c.r; // r
-  *(pbuff ++ ) = col.c.g; // g
-  *(pbuff ++ ) = col.c.b; // b
 
   strcpy(pbuff, message);
   pbuff += strlen(message);
@@ -204,18 +203,18 @@ static void ControllerScrollText(const char *message,uint8_t loop, uint8_t speed
 
 }
 ///////////////////////////////////////////////////////////////////////////////
-// LPMMK3 Set a pad RGB Colors
+// LPMMK2 Set a pad RGB Colors
 ///////////////////////////////////////////////////////////////////////////////
 static void ControllerSetPadColorRGB(uint8_t padCt, uint8_t r, uint8_t g, uint8_t b) {
 
-  // 0xF0, 0x00, 0x20, 0x29, 0x02, 0x0D, 0x03, 0x03 (Led Index) ( r) (g)  (b)
+// Host >> Launchpad MK2: F0h 00h 20h 29h 02h 18h 0Bh <LED>, <Red> <Green> <Blue> F7h
 
-  SX_LPMK3_LED_RGB_COLOR[8]  = padCt;
-  SX_LPMK3_LED_RGB_COLOR[9]  = r ;
-  SX_LPMK3_LED_RGB_COLOR[10] = g ;
-  SX_LPMK3_LED_RGB_COLOR[11] = b ;
+  SX_LPMK2_LED_RGB_COLOR[7]  = padCt;
+  SX_LPMK2_LED_RGB_COLOR[8]  = r ;
+  SX_LPMK2_LED_RGB_COLOR[9]  = g ;
+  SX_LPMK2_LED_RGB_COLOR[10] = b ;
 
-  SeqSendRawMidi( TO_CTRL_EXT,SX_LPMK3_LED_RGB_COLOR,sizeof(SX_LPMK3_LED_RGB_COLOR) );
+  SeqSendRawMidi( TO_CTRL_EXT,SX_LPMK2_LED_RGB_COLOR,sizeof(SX_LPMK2_LED_RGB_COLOR) );
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -254,15 +253,11 @@ static int ControllerInitialize() {
 
   tklog_info("IamForce : %s implementation, version %s.\n",IAMFORCE_DRIVER_NAME,IAMFORCE_DRIVER_VERSION);
 
-  SeqSendRawMidi( TO_CTRL_EXT,  SX_LPMK3_STDL_MODE, sizeof(SX_LPMK3_STDL_MODE) );
-  SeqSendRawMidi( TO_CTRL_EXT,  SX_LPMK3_DAW_CLEAR, sizeof(SX_LPMK3_DAW_CLEAR) );
-  SeqSendRawMidi( TO_CTRL_EXT,  SX_LPMK3_PGM_MODE, sizeof(SX_LPMK3_PGM_MODE) );
-
-  ControllerScrollText("IamForce",0,21,COLOR_SEA);
-
+  SeqSendRawMidi( TO_CTRL_EXT,  SX_LPMK2_USER2_MODE, sizeof(SX_LPMK2_USER2_MODE) );
+  
+  ControllerScrollText("IamForce",0,CTRL_COLOR_OCEAN);
   uint8_t midiMsg[] = {
     0x92, CTRL_BT_UP, CTRL_COLOR_BLUE,
-    0x92, CTRL_BT_LOGO, CTRL_COLOR_RED_LT,
   };
 
   SeqSendRawMidi(TO_CTRL_EXT,midiMsg,sizeof(midiMsg));
@@ -307,13 +302,13 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     int mapVal2 = -1;
 
     // TAP LED is better at first ! Always updated....
-    if ( ev->data.control.param == FORCE_BT_TAP_TEMPO )  {
-          mapVal = CTRL_BT_LOGO;
-          mapVal2 = ev->data.control.value == 3 ?  CTRL_COLOR_RED_LT:00 ;
-    }
+    // if ( ev->data.control.param == FORCE_BT_TAP_TEMPO )  {
+    //       mapVal = CTRL_BT_LOGO;
+    //       mapVal2 = ev->data.control.value == 3 ?  CTRL_COLOR_RED_LT:00 ;
+    // }
   
-    if ( ev->data.control.param == FORCE_BT_NOTE )       mapVal = CTRL_BT_KEYS;
-    if ( ev->data.control.param == FORCE_BT_STEP_SEQ )   mapVal = CTRL_BT_USER;
+    if ( ev->data.control.param == FORCE_BT_NOTE )       mapVal = CTRL_BT_USER2;
+    if ( ev->data.control.param == FORCE_BT_STEP_SEQ )   mapVal = CTRL_BT_USER1;
 
     else if ( ev->data.control.param == FORCE_BT_LAUNCH )     mapVal = CTRL_BT_SESSION ;
     else if ( ev->data.control.param == FORCE_BT_MASTER )     mapVal = CTRL_BT_SESSION ;
@@ -325,15 +320,16 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     else if ( ev->data.control.param == FORCE_BT_LAUNCH_5 )   mapVal = CTRL_BT_LAUNCH_5  ;
     else if ( ev->data.control.param == FORCE_BT_LAUNCH_6 )   mapVal = CTRL_BT_LAUNCH_6  ;
     else if ( ev->data.control.param == FORCE_BT_LAUNCH_7 )   mapVal = CTRL_BT_LAUNCH_7  ;
+    //else if ( ev->data.control.param == FORCE_BT_LAUNCH_8 )   mapVal = CTRL_BT_LAUNCH_8  ;
 
     else if ( ev->data.control.param == FORCE_BT_RIGHT )  mapVal = CTRL_BT_RIGHT    ;
     else if ( ev->data.control.param == FORCE_BT_LEFT )   mapVal = CTRL_BT_LEFT   ;
     else if ( ev->data.control.param == FORCE_BT_UP )      ;
-    else if ( ev->data.control.param == FORCE_BT_DOWN )     mapVal = CTRL_BT_DOWN ;
+    else if ( ev->data.control.param == FORCE_BT_DOWN )   mapVal = CTRL_BT_DOWN ;
 
     else if ( ev->data.control.param == FORCE_BT_MUTE )   {
       if ( ev->data.control.value == 3 ) {
-        mapVal = CTRL_BT_STOP_SM   ;
+        mapVal = CTRL_BT_LAUNCH_8   ;
   
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_AMBER ;
@@ -342,7 +338,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
 
     else if ( ev->data.control.param == FORCE_BT_SOLO )   {
       if ( ev->data.control.value == 3 ) {
-        mapVal = CTRL_BT_STOP_SM   ;
+        mapVal = CTRL_BT_LAUNCH_8   ;
    
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_BLUE ;
@@ -351,7 +347,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
 
     else if ( ev->data.control.param == FORCE_BT_REC_ARM ) {
       if ( ev->data.control.value == 3 ) {
-        mapVal = CTRL_BT_STOP_SM   ;
+        mapVal = CTRL_BT_LAUNCH_8   ;
 
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_RED ;
@@ -360,7 +356,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
 
     else if ( ev->data.control.param == FORCE_BT_CLIP_STOP )   {
       if ( ev->data.control.value == 3 ) {
-        mapVal = CTRL_BT_STOP_SM   ;
+        mapVal = CTRL_BT_LAUNCH_8   ;
    
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_GREEN ;
@@ -415,11 +411,19 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
         if       ( ev->data.control.param == CTRL_BT_UP) { // ^
           // UP holded = shitfmode on the Launchpad
           CtrlShiftMode = ( ev->data.control.value == 0x7F );
+ 
+          // If we press shift while holding launch 8/SSM,  that will trig Record Arm
+          // only in that sequence !
+          if ( ControllerColumnsPadMode && CtrlShiftMode ) {
+                CurrentSoloMode = FORCE_SM_REC_ARM;
+                mapVal = SoloModeButtonMap[CurrentSoloMode];
+          } 
+          else 
           return false;
         }
 
-        else if  ( ev->data.control.param == CTRL_BT_STOP_SM  ) { // v
-          // "Stop Solo Mute" button to manage columns pads
+        else if  ( ev->data.control.param == CTRL_BT_LAUNCH_8  ) { // v
+          // Launch 8 button  to manage columns pads
 
           // Shift is used to launch the 8th line
           if ( CtrlShiftMode )           mapVal = FORCE_BT_LAUNCH_8;
@@ -450,7 +454,9 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
           mapVal = FORCE_BT_LAUNCH_2 ;
         }
         else if  ( ev->data.control.param == CTRL_BT_LAUNCH_3 ) { // >
-          mapVal = FORCE_BT_LAUNCH_3 ;
+          // Launch 3 generates a FORCE SHIFT FOR columns options setting
+          // in columns pads mode
+          mapVal = ControllerColumnsPadMode ? FORCE_BT_SHIFT : FORCE_BT_LAUNCH_3 ;
         }
 
         else if  ( ev->data.control.param == CTRL_BT_LAUNCH_4 ) { // >
@@ -462,23 +468,40 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
           mapVal = FORCE_BT_LAUNCH_4 ;
         }
 
+        // Launch 5 / Stop clip
         else if  ( ev->data.control.param == CTRL_BT_LAUNCH_5 ) { // >
-          // Launch 5 generates a FORCE SHIFT FOR columns options setting
-          // in columns pads mode
-          mapVal = ControllerColumnsPadMode ? FORCE_BT_SHIFT : FORCE_BT_LAUNCH_5 ;
-        }
 
-        else if  ( ev->data.control.param == CTRL_BT_LAUNCH_6 ) { // >
-          // Launch 6 generates a STOP ALL in columns pads mode
-          mapVal = ControllerColumnsPadMode ? FORCE_BT_STOP_ALL : FORCE_BT_LAUNCH_6 ;
-        }
-
-        else if  ( ev->data.control.param == CTRL_BT_LAUNCH_7 ) { // >
-
-          // Laucnh 7 is used to change column pads mode in columns pads mode
           if ( ControllerColumnsPadMode ) {
             if ( ev->data.control.value != 0 ) {
-              if ( ++CurrentSoloMode >= FORCE_SM_END ) CurrentSoloMode = 0;
+              CurrentSoloMode = FORCE_SM_CLIP_STOP;
+            }
+            mapVal = SoloModeButtonMap[CurrentSoloMode];
+          }
+          else {
+            mapVal = FORCE_BT_LAUNCH_5;
+          }
+        }
+
+        // Launch 6 / Mute
+        else if  ( ev->data.control.param == CTRL_BT_LAUNCH_6 ) { // >
+
+          if ( ControllerColumnsPadMode ) {
+            if ( ev->data.control.value != 0 ) {
+              CurrentSoloMode = FORCE_SM_MUTE;
+            }
+            mapVal = SoloModeButtonMap[CurrentSoloMode];
+          }
+          else {
+            mapVal = FORCE_BT_LAUNCH_6;
+          }
+        }
+
+        // Launch 7 / Solo
+        else if  ( ev->data.control.param == CTRL_BT_LAUNCH_7 ) { // >
+
+          if ( ControllerColumnsPadMode ) {
+            if ( ev->data.control.value != 0 ) {
+              CurrentSoloMode = FORCE_SM_SOLO;
             }
             mapVal = SoloModeButtonMap[CurrentSoloMode];
           }
@@ -487,16 +510,21 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
           }
         }
 
+
         else if  ( ev->data.control.param == CTRL_BT_SESSION ) { // >
           mapVal = CtrlShiftMode ? FORCE_BT_MASTER : FORCE_BT_LAUNCH ;
         }
 
-        else if  ( ev->data.control.param == CTRL_BT_USER ) { // >
+        else if  ( ev->data.control.param == CTRL_BT_USER1 ) { // >
           mapVal = FORCE_BT_STEP_SEQ ;
         }
 
-        else if  ( ev->data.control.param == CTRL_BT_KEYS ) { // >
+        else if  ( ev->data.control.param == CTRL_BT_USER2 ) { // >
           mapVal = FORCE_BT_NOTE ;
+        }
+
+        else if  ( ev->data.control.param == CTRL_BT_MIXER ) { // >
+          mapVal = FORCE_BT_MIXER ;
         }
 
         if ( mapVal >= 0 ) {

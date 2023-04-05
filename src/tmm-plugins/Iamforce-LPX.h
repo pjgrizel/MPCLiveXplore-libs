@@ -1,4 +1,4 @@
-/*
+  /*
 __ __| |           |  /_) |     ___|             |           |
   |   __ \   _ \  ' /  | |  / |      _ \ __ \   |      _` | __ \   __|
   |   | | |  __/  . \  |   <  |   |  __/ |   |  |     (   | |   |\__ \
@@ -8,7 +8,7 @@ TKGL_MIDIMAPPER  custom mapping library .
 This is a custom midi mapping library for TKGL_MIDIMAPPER LD_PRELOAD library
 
 ----------------------------------------------------------------------------
-LAUNCHPAD MINI MK3 FOR IAMFORCE
+LAUNCHPAD X FOR IAMFORCE
 ----------------------------------------------------------------------------
 
   Disclaimer.
@@ -102,13 +102,13 @@ show columns pads permanenently.
 */
 
 #define IAMFORCE_DRIVER_VERSION "1.0"
-#define IAMFORCE_DRIVER_ID "LPMK3"
-#define IAMFORCE_DRIVER_NAME "Novation Launchpad Mini Mk3"
-#define IAMFORCE_ALSASEQ_DEFAULT_CLIENT_NAME "Launchpad Mini MK3"
+#define IAMFORCE_DRIVER_ID "LPX"
+#define IAMFORCE_DRIVER_NAME "Novation Launchpad X"
+#define IAMFORCE_ALSASEQ_DEFAULT_CLIENT_NAME "Launchpad X"
 #define IAMFORCE_ALSASEQ_DEFAULT_PORT 1
 
-#define LP_DEVICE_ID 0x0D // Launchpad Mini MK3
-//#define LP_DEVICE_ID 0x0C // Launchpad X
+//#define LP_DEVICE_ID 0x0D // Launchpad Mini MK3
+#define LP_DEVICE_ID 0x0C // Launchpad X
 
 #define LP_SYSEX_HEADER 0xF0,0x00,0x20,0x29,0x02, LP_DEVICE_ID
 
@@ -159,11 +159,10 @@ show columns pads permanenently.
 
 
 
-// SYSEX for Launchpad mini Mk3
+// SYSEX  for Launchpad mini Mk3
 
 const uint8_t SX_DEVICE_INQUIRY[] = { 0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7 };
 const uint8_t SX_LPMK3_INQUIRY_REPLY_APP[] = { 0xF0, 0x7E, 0x00, 0x06, 0x02, 0x00, 0x20, 0x29, 0x13, 0x01, 0x00, 0x00 } ;
-//const uint8_t SX_LPMK3_PGM_MODE = { 0xF0, 0x00, 0x20, 0x29, 0x02, 0x0D, 0x00, 0x7F, 0xF7} ;
 const uint8_t SX_LPMK3_PGM_MODE[]  = { LP_SYSEX_HEADER, 0x0E, 0x01, 0xF7 } ;
 const uint8_t SX_LPMK3_DAW_MODE[]  = { LP_SYSEX_HEADER, 0x10, 0x01, 0xF7 } ;
 const uint8_t SX_LPMK3_STDL_MODE[] = { LP_SYSEX_HEADER, 0x10, 0x00, 0xF7 } ;
@@ -334,7 +333,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     else if ( ev->data.control.param == FORCE_BT_MUTE )   {
       if ( ev->data.control.value == 3 ) {
         mapVal = CTRL_BT_STOP_SM   ;
-  
+ 
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_AMBER ;
       }
@@ -343,7 +342,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     else if ( ev->data.control.param == FORCE_BT_SOLO )   {
       if ( ev->data.control.value == 3 ) {
         mapVal = CTRL_BT_STOP_SM   ;
-   
+
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_BLUE ;
       }
@@ -352,7 +351,7 @@ static void ControllerSetMapButtonLed(snd_seq_event_t *ev) {
     else if ( ev->data.control.param == FORCE_BT_REC_ARM ) {
       if ( ev->data.control.value == 3 ) {
         mapVal = CTRL_BT_STOP_SM   ;
-
+       
         // Set color of "Stop Solo Mode button"
         mapVal2 = CTRL_COLOR_RED ;
       }
@@ -415,6 +414,8 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
         if       ( ev->data.control.param == CTRL_BT_UP) { // ^
           // UP holded = shitfmode on the Launchpad
           CtrlShiftMode = ( ev->data.control.value == 0x7F );
+          //mapVal = FORCE_BT_SHIFT;
+
           return false;
         }
 
@@ -554,15 +555,15 @@ static bool ControllerEventReceived(snd_seq_event_t *ev) {
               ev->data.note.velocity = ( ev->data.note.velocity > 0 ? 0x7F:00);
             }
         }
-        else { 
+        else  {
           ev->data.note.channel = 9; // Note Force pad
-                // If Shift Mode, simulate Select key
+          // If Shift Mode, simulate Select key
           if ( CtrlShiftMode ) {
-            SendDeviceKeyEvent(FORCE_BT_SELECT,0x7F);
-            SendMidiEvent(ev);
-            SendDeviceKeyEvent(FORCE_BT_SELECT,0);
-            return false;
-          }
+              SendDeviceKeyEvent(FORCE_BT_SELECT,0x7F);
+              SendMidiEvent(ev);
+              SendDeviceKeyEvent(FORCE_BT_SELECT,0);
+              return false;
+            }
         }
       }
   }
