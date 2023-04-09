@@ -33,6 +33,8 @@ your own midi mapping to input and output midi messages.
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 
+#ifndef TKGL_MIDIMAPPER_H
+#define TKGL_MIDIMAPPER_H
 
 #define VERSION "BETA2"
 
@@ -411,6 +413,8 @@ int SendMidiEvent(snd_seq_event_t *ev );
 int GetSeqPortFromDestinationId(uint8_t destId );
 void SendDeviceKeyEvent(uint8_t key,uint8_t value);
 void SendDeviceKeyPress(uint8_t key);
-static int ControllerGetPadIndex(uint8_t padF) ;
+int ControllerGetPadIndex(uint8_t padF) ;
 void DeviceSetPadColorRGB(const uint8_t mpcId, const uint8_t padNumber, const uint8_t r,const uint8_t g,const uint8_t b ) ;
 void DeviceSetPadColorValue(const uint8_t mpcId, const uint8_t padNumber, const uint32_t rgbColorValue);
+
+#endif

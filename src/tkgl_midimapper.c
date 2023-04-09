@@ -160,8 +160,8 @@ static typeof(&snd_seq_create_simple_port) orig_snd_seq_create_simple_port;
 static typeof(&snd_midi_event_decode) orig_snd_midi_event_decode;
 
 // Other more generic APIs
-static typeof(&open64) orig_open64;
-static typeof(&close) orig_close;
+typeof(&open64) orig_open64;
+typeof(&close) orig_close;
 
 // Internal product code file handler to change on the fly when the file will be opened
 // That avoids all binding stuff in shell
